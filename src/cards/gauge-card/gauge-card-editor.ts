@@ -11,7 +11,7 @@ const MAIN_SCHEMA = [
   {
     name: 'entity',
     required: true,
-    selector: { entity: {} },
+    selector: { entity: { domain: ['sensor'] } },
   },
   { name: 'name', selector: { text: {} } },
   {
