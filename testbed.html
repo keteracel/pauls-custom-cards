@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paul's Gauge Card — Testbed</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7/css/materialdesignicons.min.css">
+
+  <!-- HA element stubs — must be defined before the card bundle runs -->
+  <script>
+    customElements.define('ha-card', class extends HTMLElement {
+      connectedCallback() {
+        this.style.display = 'block';
+        this.style.borderRadius = '12px';
+        this.style.overflow = 'hidden';
+        this.style.boxShadow = '0 2px 12px rgba(0,0,0,0.35)';
+      }
+    });
+
+    customElements.define('ha-icon', class extends HTMLElement {
+      constructor() {
+        super();
+        const root = this.attachShadow({ mode: 'open' });
+        // Load MDI font inside shadow DOM so its CSS selectors apply here
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/@mdi/font@7/css/materialdesignicons.min.css';
+        const style = document.createElement('style');
+        style.textContent = ':host { display:inline-flex; align-items:center; justify-content:center; width:var(--mdc-icon-size,24px); height:var(--mdc-icon-size,24px); } i { font-size:var(--mdc-icon-size,24px); line-height:1; }';
+        this._i = document.createElement('i');
+        root.append(link, style, this._i);
+      }
+      static get observedAttributes() { return ['icon']; }
+      connectedCallback() { this._render(); }
+      attributeChangedCallback() { this._render(); }
+      _render() {
+        const raw = this.getAttribute('icon') ?? '';
+        const name = raw.startsWith('mdi:') ? raw.slice(4) : raw;
+        this._i.className = `mdi mdi-${name}`;
+      }
+    });
+  </script>
+
+  <script type="module" src="./dist/pauls-cards.js"></script>
+
+  <style>
+    :root {
+      --card-background-color: #1c1c1e;
+      --primary-text-color: #e5e5ea;
+      --secondary-text-color: #8e8e93;
+      --error-color: #f44336;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111113;
+      color: var(--primary-text-color);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 32px 24px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .subtitle {
+      color: var(--secondary-text-color);
+      font-size: 0.9rem;
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--secondary-text-color);
+      margin-bottom: 16px;
+    }
+
+    section {
+      margin-bottom: 48px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+    }
+
+    .interactive-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 480px;
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      color: var(--secondary-text-color);
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    /* Slider section */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      max-width: 480px;
+    }
+
+    .slider-row label {
+      font-size: 0.85rem;
+      color: var(--secondary-text-color);
+      white-space: nowrap;
+    }
+
+    .slider-row input[type=range] {
+      flex: 1;
+      accent-color: #4caf50;
+      cursor: pointer;
+    }
+
+    #live-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      min-width: 52px;
+      text-align: right;
+      color: #fff;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--secondary-text-color);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #2c2c2e;
+      margin-bottom: 40px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Paul's Gauge Card — Testbed</h1>
+  <p class="subtitle">Dummy sensor data. Temperature sensor: 0–50 °C with four levels.</p>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#2196f3"></span>Freezing (0–10)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#00bcd4"></span>Cold (10–18)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#4caf50"></span>Comfortable (18–25)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ff9800"></span>Warm (25–32)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#f44336"></span>Hot (32–50)</div>
+  </div>
+
+  <section>
+    <h2>Distinct mode — five values across the range</h2>
+    <div class="grid" id="distinct-grid"></div>
+  </section>
+
+  <hr class="divider">
+
+  <section>
+    <h2>Gradient mode — same values, colors interpolate</h2>
+    <div class="grid" id="gradient-grid"></div>
+  </section>
+
+  <hr class="divider">
+
+  <section>
+    <h2>Interactive — drag to change value</h2>
+    <div class="slider-row">
+      <label>Temperature</label>
+      <input type="range" id="slider" min="0" max="50" value="22" step="0.5">
+      <span id="live-value">22.0 °C</span>
+    </div>
+    <div class="interactive-grid">
+      <div>
+        <div class="card-label">Distinct</div>
+        <paul-gauge-card id="live-distinct"></paul-gauge-card>
+      </div>
+      <div>
+        <div class="card-label">Gradient</div>
+        <paul-gauge-card id="live-gradient"></paul-gauge-card>
+      </div>
+    </div>
+  </section>
+
+  <script type="module">
+    await customElements.whenDefined('paul-gauge-card');
+
+    // --- Config ---
+
+    const LEVELS = [
+      { min: 0,  max: 10, icon: 'mdi:snowflake',       color: '#2196f3', label: 'Freezing'    },
+      { min: 10, max: 18, icon: 'mdi:thermometer-low',  color: '#00bcd4', label: 'Cold'        },
+      { min: 18, max: 25, icon: 'mdi:thermometer',       color: '#4caf50', label: 'Comfortable' },
+      { min: 25, max: 32, icon: 'mdi:thermometer-high',  color: '#ff9800', label: 'Warm'        },
+      { min: 32, max: 50, icon: 'mdi:fire',              color: '#f44336', label: 'Hot'         },
+    ];
+
+    const baseConfig = {
+      type: 'custom:paul-gauge-card',
+      entity: 'sensor.temperature',
+      show_name: true,
+      show_unit: true,
+      levels: LEVELS,
+    };
+
+    // --- Hass factory ---
+
+    function makeHass(entityId, value, name = 'Temperature', unit = '°C') {
+      return {
+        states: {
+          [entityId]: {
+            entity_id: entityId,
+            state: String(value),
+            attributes: { friendly_name: name, unit_of_measurement: unit },
+          },
+        },
+      };
+    }
+
+    function makeCard(entityId, colorMode, value, name) {
+      const el = document.createElement('paul-gauge-card');
+      el.setConfig({ ...baseConfig, entity: entityId, color_mode: colorMode, name });
+      el.hass = makeHass(entityId, value, name);
+      return el;
+    }
+
+    // --- Static grids ---
+
+    const staticValues = [
+      { value: 5,    name: '5 °C' },
+      { value: 14,   name: '14 °C' },
+      { value: 21.5, name: '21.5 °C' },
+      { value: 28,   name: '28 °C' },
+      { value: 43,   name: '43 °C' },
+    ];
+
+    const distinctGrid = document.getElementById('distinct-grid');
+    const gradientGrid = document.getElementById('gradient-grid');
+
+    staticValues.forEach(({ value, name }, i) => {
+      const entityId = `sensor.static_${i}`;
+      const hass = makeHass(entityId, value, name);
+
+      const dCard = document.createElement('paul-gauge-card');
+      dCard.setConfig({ ...baseConfig, entity: entityId, color_mode: 'distinct', name });
+      dCard.hass = hass;
+      distinctGrid.appendChild(dCard);
+
+      const gCard = document.createElement('paul-gauge-card');
+      gCard.setConfig({ ...baseConfig, entity: entityId, color_mode: 'gradient', name });
+      gCard.hass = hass;
+      gradientGrid.appendChild(gCard);
+    });
+
+    // --- Interactive cards ---
+
+    const liveDistinct = document.getElementById('live-distinct');
+    const liveGradient = document.getElementById('live-gradient');
+    const LIVE_ENTITY = 'sensor.live_temp';
+
+    liveDistinct.setConfig({ ...baseConfig, entity: LIVE_ENTITY, color_mode: 'distinct', name: 'Living Room' });
+    liveGradient.setConfig({ ...baseConfig, entity: LIVE_ENTITY, color_mode: 'gradient', name: 'Living Room' });
+
+    function updateLive(value) {
+      const hass = makeHass(LIVE_ENTITY, value, 'Living Room');
+      liveDistinct.hass = hass;
+      liveGradient.hass = hass;
+      document.getElementById('live-value').textContent = `${parseFloat(value).toFixed(1)} °C`;
+    }
+
+    const slider = document.getElementById('slider');
+    slider.addEventListener('input', () => updateLive(slider.value));
+    updateLive(slider.value);
+  </script>
+</body>
+</html>

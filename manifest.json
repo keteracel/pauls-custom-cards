@@ -1,0 +1,8 @@
+{
+  "domain": "lovelace",
+  "name": "Paul's Custom Cards",
+  "documentation": "https://github.com/keteracel/pauls-custom-cards",
+  "codeowners": ["@keteracel"],
+  "version": "0.1.0",
+  "iot_class": "local_polling"
+}
