@@ -10,7 +10,7 @@ export default {
   onwarn(warning, warn) {
     // @formatjs/intl-utils is a legacy CJS package; its top-level `this` is
     // harmlessly rewritten to undefined by Rollup — suppress the noise.
-    if (warning.code === 'THIS_IS_UNDEFINED') return;
+    if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('node_modules')) return;
     warn(warning);
   },
   output: {
