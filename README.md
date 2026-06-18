@@ -15,7 +15,7 @@ A full-bleed background colour card that reflects the current state of a sensor.
 1. Open HACS in your Home Assistant sidebar.
 2. Go to **Frontend**.
 3. Click the three-dot menu (⋮) in the top right and choose **Custom repositories**.
-4. Add `https://github.com/keteracel/pauls-custom-cards` with category **Lovelace**.
+4. Add `https://github.com/keteracel/pauls-custom-cards` with category **Dashboard**.
 5. Close the dialog, then search for **Paul's Custom Cards** and click **Download**.
 6. Reload your browser.
 
