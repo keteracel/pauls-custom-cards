@@ -7,6 +7,12 @@ const dev = process.env.ROLLUP_WATCH === 'true';
 
 export default {
   input: 'src/index.ts',
+  onwarn(warning, warn) {
+    // @formatjs/intl-utils is a legacy CJS package; its top-level `this` is
+    // harmlessly rewritten to undefined by Rollup — suppress the noise.
+    if (warning.code === 'THIS_IS_UNDEFINED') return;
+    warn(warning);
+  },
   output: {
     file: 'dist/pauls-cards.js',
     format: 'es',
