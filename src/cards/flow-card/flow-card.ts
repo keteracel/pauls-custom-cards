@@ -1,7 +1,9 @@
 import { LitElement, html, svg, css, type CSSResultGroup, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
-import type { FlowCardConfig, FlowEdge, ResolvedNode } from './types.js';
+import type { FlowCardConfig, FlowEdge, NodeType, ResolvedNode } from './types.js';
+
+const VALID_NODE_TYPES = new Set<NodeType>(['heat_pump', 'pump', 'tank', 'zone', 'valve', 'junction']);
 
 @customElement('paul-flow-card')
 export class FlowCard extends LitElement {
@@ -71,7 +73,7 @@ export class FlowCard extends LitElement {
     const seenIds = new Set<string>();
     for (const node of config.nodes) {
       if (!node.id)   throw new Error('[paul-flow-card] Every node must have an id.');
-      if (!node.type) throw new Error(`[paul-flow-card] Node "${node.id}" must have a type.`);
+      if (!node.type || !VALID_NODE_TYPES.has(node.type)) throw new Error(`[paul-flow-card] Node "${node.id}" has invalid type: "${node.type}". Valid types: ${[...VALID_NODE_TYPES].join(', ')}.`);
       if (seenIds.has(node.id)) throw new Error(`[paul-flow-card] Duplicate node id: "${node.id}".`);
       seenIds.add(node.id);
     }
@@ -79,11 +81,18 @@ export class FlowCard extends LitElement {
       if (!seenIds.has(edge.from)) throw new Error(`[paul-flow-card] Edge references unknown node: "${edge.from}".`);
       if (!seenIds.has(edge.to))   throw new Error(`[paul-flow-card] Edge references unknown node: "${edge.to}".`);
     }
+    if (config.cell_size !== undefined && (config.cell_size <= 0 || !Number.isFinite(config.cell_size))) {
+      throw new Error('[paul-flow-card] cell_size must be a positive number.');
+    }
 
     this._nodes = config.nodes.map(n => {
+      if (!n.position) throw new Error(`[paul-flow-card] Node "${n.id}" must have a position.`);
       const [_col, _row] = Array.isArray(n.position)
         ? n.position
         : [n.position.col, n.position.row];
+      if (!Number.isFinite(_col) || !Number.isFinite(_row)) {
+        throw new Error(`[paul-flow-card] Node "${n.id}" has invalid position coordinates.`);
+      }
       return { ...n, _col, _row };
     });
     this._nodeMap = new Map(this._nodes.map(n => [n.id, n]));
@@ -113,6 +122,7 @@ export class FlowCard extends LitElement {
   }
 
   private _isNodeOn(node: ResolvedNode): boolean {
+    if (node.type === 'junction') return true;
     const e = node.entities;
     if (!e) return false;
     if (node.type === 'zone') {
@@ -132,8 +142,9 @@ export class FlowCard extends LitElement {
       return this.hass.states[edge.active_entity]?.state === 'on';
     }
     const fromNode = this._nodeMap.get(edge.from);
-    if (!fromNode) return false;
-    return this._isNodeOn(fromNode);
+    const toNode = this._nodeMap.get(edge.to);
+    if (!fromNode || !toNode) return false;
+    return this._isNodeOn(fromNode) && this._isNodeOn(toNode);
   }
 
   private _getDisplayTemp(node: ResolvedNode): string | null {
@@ -144,10 +155,14 @@ export class FlowCard extends LitElement {
       const tin  = e.temp_in  ? this.hass.states[e.temp_in]  : undefined;
       const tout = e.temp_out ? this.hass.states[e.temp_out] : undefined;
       if (tin && tout) {
-        return `${Math.round(parseFloat(tin.state))}→${Math.round(parseFloat(tout.state))}°`;
+        const tInVal = parseFloat(tin.state);
+        const tOutVal = parseFloat(tout.state);
+        if (Number.isFinite(tInVal) && Number.isFinite(tOutVal)) {
+          return `${Math.round(tInVal)}→${Math.round(tOutVal)}°`;
+        }
       }
-      if (tin)  return `${parseFloat(tin.state).toFixed(1)}°`;
-      if (tout) return `${parseFloat(tout.state).toFixed(1)}°`;
+      if (tin)  { const v = parseFloat(tin.state);  if (Number.isFinite(v)) return `${v.toFixed(1)}°`; }
+      if (tout) { const v = parseFloat(tout.state); if (Number.isFinite(v)) return `${v.toFixed(1)}°`; }
       return null;
     }
 
@@ -159,14 +174,14 @@ export class FlowCard extends LitElement {
       }
       if (e.temperature) {
         const s = this.hass.states[e.temperature];
-        if (s) return `${parseFloat(s.state).toFixed(1)}°`;
+        if (s) { const v = parseFloat(s.state); if (Number.isFinite(v)) return `${v.toFixed(1)}°`; }
       }
       return null;
     }
 
     if (e.temperature) {
       const s = this.hass.states[e.temperature];
-      if (s) return `${parseFloat(s.state).toFixed(1)}°`;
+      if (s) { const v = parseFloat(s.state); if (Number.isFinite(v)) return `${v.toFixed(1)}°`; }
     }
     return null;
   }
@@ -196,6 +211,8 @@ export class FlowCard extends LitElement {
       case 'junction':
         return svg`<circle cx="${cx}" cy="${cy}" r="6"
                             fill="#666" stroke="#666" stroke-width="1"/>`;
+      default:
+        return svg``;
     }
   }
 

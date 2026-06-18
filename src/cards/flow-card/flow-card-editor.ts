@@ -31,7 +31,7 @@ export class FlowCardEditor extends LitElement {
 
   private _changed(ev: CustomEvent): void {
     ev.stopPropagation();
-    if (!this._config || !this.hass) return;
+    if (!this._config || !this.hass || !ev.detail?.value) return;
     fireEvent(this, 'config-changed', {
       config: { ...this._config, ...(ev.detail.value as Partial<FlowCardConfig>) },
     });
