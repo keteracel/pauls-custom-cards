@@ -1,4 +1,4 @@
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
+import { LitElement, html, css, type CSSResultGroup, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import type { HomeAssistant } from 'custom-card-helpers';
@@ -13,8 +13,16 @@ export class GaugeCard extends LitElement {
   @state()
   private _config!: GaugeCardConfig;
 
+  // Sorted once at setConfig time — never re-sorted during renders
+  private _cachedLevels: GaugeLevelConfig[] = [];
+
+  // Fix #4: wrap dynamic import so a load failure doesn't propagate to HA's card picker
   public static async getConfigElement(): Promise<HTMLElement> {
-    await import('./gauge-card-editor.js');
+    try {
+      await import('./gauge-card-editor.js');
+    } catch (err) {
+      console.error('[paul-gauge-card] Failed to load config editor:', err);
+    }
     return document.createElement('paul-gauge-card-editor');
   }
 
@@ -33,23 +41,45 @@ export class GaugeCard extends LitElement {
     };
   }
 
+  // Fix #7 + #6: validate per-level fields at config time; sort once and cache
   public setConfig(config: GaugeCardConfig): void {
     if (!config.entity) throw new Error('You must define an entity.');
     if (!config.levels || config.levels.length === 0) throw new Error('You must define at least one level.');
+    for (const level of config.levels) {
+      if (typeof level.min !== 'number' || isNaN(level.min) ||
+          typeof level.max !== 'number' || isNaN(level.max)) {
+        throw new Error(`Level min/max must be numbers (got min=${level.min}, max=${level.max}).`);
+      }
+      if (level.min >= level.max) {
+        throw new Error(`Level min must be less than max (got min=${level.min}, max=${level.max}).`);
+      }
+    }
     this._config = { color_mode: 'distinct', show_name: true, show_unit: true, ...config };
+    this._cachedLevels = [...this._config.levels].sort((a, b) => a.min - b.min);
   }
 
-  private _sortedLevels(): GaugeLevelConfig[] {
-    return [...this._config.levels].sort((a, b) => a.min - b.min);
+  // Fix #3: skip re-renders when the watched entity hasn't changed
+  protected override shouldUpdate(changedProperties: PropertyValues): boolean {
+    if (changedProperties.has('hass') && !changedProperties.has('_config')) {
+      if (!this._config) return false;
+      const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
+      return !oldHass || oldHass.states[this._config.entity] !== this.hass.states[this._config.entity];
+    }
+    return true;
   }
 
+  // Fix #2: in-gap values now return the level immediately below instead of sorted[0]
   private _getCurrentLevel(value: number): GaugeLevelConfig {
-    const sorted = this._sortedLevels();
+    const sorted = this._cachedLevels;
     const matched = sorted.find(l => value >= l.min && value < l.max);
     if (matched) return matched;
-    return value >= sorted[sorted.length - 1].max
-      ? sorted[sorted.length - 1]
-      : sorted[0];
+    if (value >= sorted[sorted.length - 1].max) return sorted[sorted.length - 1];
+    if (value < sorted[0].min) return sorted[0];
+    // Value is in a gap — return the level whose range ends just below the value
+    for (let i = sorted.length - 2; i >= 0; i--) {
+      if (value >= sorted[i].max) return sorted[i];
+    }
+    return sorted[0];
   }
 
   private _hexToRgb(hex: string): [number, number, number] | null {
@@ -65,27 +95,30 @@ export class GaugeCard extends LitElement {
     ];
   }
 
+  // Fix #8: warn when a color can't be interpolated instead of silently degrading
   private _interpolateColor(colorA: string, colorB: string, t: number): string {
     const a = this._hexToRgb(colorA);
     const b = this._hexToRgb(colorB);
-    if (!a || !b) return colorA;
+    if (!a || !b) {
+      console.warn(
+        `[paul-gauge-card] Gradient mode requires hex colors (#RGB or #RRGGBB). ` +
+        `Got: '${!a ? colorA : colorB}'. Falling back to flat color.`
+      );
+      return colorA;
+    }
     return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)}, ${Math.round(a[1] + (b[1] - a[1]) * t)}, ${Math.round(a[2] + (b[2] - a[2]) * t)})`;
   }
 
-  private _computeBackgroundColor(value: number): string {
-    const sorted = this._sortedLevels();
-    const level = this._getCurrentLevel(value);
-
-    if (this._config.color_mode !== 'gradient') {
-      return level.color;
-    }
+  // Fix #6: accepts pre-computed level so render() doesn't call _getCurrentLevel twice
+  private _computeBackgroundColor(value: number, level: GaugeLevelConfig): string {
+    if (this._config.color_mode !== 'gradient') return level.color;
 
     const range = level.max - level.min;
     if (range <= 0) return level.color;
 
     const t = Math.max(0, Math.min(1, (value - level.min) / range));
-    const idx = sorted.indexOf(level);
-    const nextLevel = sorted[idx + 1];
+    const idx = this._cachedLevels.indexOf(level);
+    const nextLevel = this._cachedLevels[idx + 1];
 
     return this._interpolateColor(level.color, nextLevel ? nextLevel.color : level.color, t);
   }
@@ -106,8 +139,9 @@ export class GaugeCard extends LitElement {
     const rawValue = parseFloat(stateObj.state);
     const isNumeric = !isNaN(rawValue);
 
+    // Fix #6: compute level once and pass to color function — no double resolution
     const level = isNumeric ? this._getCurrentLevel(rawValue) : undefined;
-    const bgColor = isNumeric ? this._computeBackgroundColor(rawValue) : undefined;
+    const bgColor = isNumeric && level ? this._computeBackgroundColor(rawValue, level) : undefined;
     const icon = level?.icon ?? 'mdi:help-circle-outline';
     const friendlyName = this._config.name ?? stateObj.attributes.friendly_name ?? this._config.entity;
     const unit = this._config.unit ?? (stateObj.attributes.unit_of_measurement as string | undefined) ?? '';

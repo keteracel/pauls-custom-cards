@@ -13,10 +13,13 @@ declare global {
 }
 
 window.customCards = window.customCards ?? [];
-window.customCards.push({
-  type: 'paul-gauge-card',
-  name: "Paul's Gauge Card",
-  description: 'Background-color gauge showing sensor state with configurable level colors and icons.',
-  preview: true,
-  documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
-});
+// Fix #5: guard against double-registration on hot-reload or duplicate resource entries
+if (!window.customCards.some(c => c.type === 'paul-gauge-card')) {
+  window.customCards.push({
+    type: 'paul-gauge-card',
+    name: "Paul's Gauge Card",
+    description: 'Background-color gauge showing sensor state with configurable level colors and icons.',
+    preview: true,
+    documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
+  });
+}

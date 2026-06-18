@@ -17,11 +17,20 @@ export class GaugeCardEditor extends LitElement {
     this._config = config;
   }
 
+  // Fix #1: handle ha-entity-picker (single field, has configValue) and
+  // ha-form (full object in ev.detail.value, no configValue) separately
   private _valueChanged(ev: CustomEvent): void {
     if (!this._config || !this.hass) return;
     const target = ev.target as HTMLInputElement & { configValue?: string };
-    if (!target.configValue) return;
-    const config = { ...this._config, [target.configValue]: ev.detail?.value ?? target.value };
+    let config: GaugeCardConfig;
+    if (target.configValue) {
+      config = { ...this._config, [target.configValue]: ev.detail?.value ?? target.value };
+    } else if (ev.detail?.value !== null && typeof ev.detail?.value === 'object') {
+      // ha-form emits the full set of managed fields — spread over config to preserve levels
+      config = { ...this._config, ...(ev.detail.value as Partial<GaugeCardConfig>) };
+    } else {
+      return;
+    }
     fireEvent(this, 'config-changed', { config });
   }
 
