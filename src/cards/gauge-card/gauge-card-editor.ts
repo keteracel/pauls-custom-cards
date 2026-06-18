@@ -1,4 +1,5 @@
 import { LitElement, html, css } from 'lit';
+import { styleMap } from 'lit/directives/style-map.js';
 import { customElement, property } from 'lit/decorators.js';
 import { fireEvent } from 'custom-card-helpers';
 import type { HomeAssistant } from 'custom-card-helpers';
@@ -10,7 +11,7 @@ const MAIN_SCHEMA = [
   {
     name: 'entity',
     required: true,
-    selector: { entity: { domain: ['sensor'] } },
+    selector: { entity: {} },
   },
   { name: 'name', selector: { text: {} } },
   {
@@ -79,15 +80,19 @@ export class GaugeCardEditor extends LitElement {
   private _levelChanged(ev: CustomEvent, idx: number): void {
     ev.stopPropagation();
     if (!this._config) return;
-    const levels = [...this._config.levels];
-    levels[idx] = { ...levels[idx], ...(ev.detail.value as Partial<GaugeLevelConfig>) };
-    fireEvent(this, 'config-changed', { config: { ...this._config, levels } });
+    const levels = this._config.levels;
+    if (idx < 0 || idx >= levels.length) return;
+    const merged = { ...levels[idx], ...(ev.detail.value as Partial<GaugeLevelConfig>) };
+    if (typeof merged.min === 'number' && typeof merged.max === 'number' && merged.min >= merged.max) return;
+    const newLevels = [...levels];
+    newLevels[idx] = merged;
+    fireEvent(this, 'config-changed', { config: { ...this._config, levels: newLevels } });
   }
 
   private _addLevel(): void {
     if (!this._config) return;
     const last = this._config.levels[this._config.levels.length - 1];
-    const min = last ? last.max : 0;
+    const min = (last && isFinite(last.max)) ? last.max : 0;
     const levels: GaugeLevelConfig[] = [
       ...this._config.levels,
       { min, max: min + 10, icon: 'mdi:thermometer', color: '#9e9e9e' },
@@ -109,7 +114,7 @@ export class GaugeCardEditor extends LitElement {
 
         <ha-form
           .schema=${MAIN_SCHEMA}
-          .data=${this._config}
+          .data=${{ color_mode: 'distinct', show_name: true, show_unit: true, ...this._config }}
           .hass=${this.hass}
           .computeLabel=${computeMainLabel}
           @value-changed=${this._mainChanged}
@@ -127,8 +132,8 @@ export class GaugeCardEditor extends LitElement {
         ${this._config.levels.map((level, idx) => html`
           <div class="level-card">
             <div class="level-header">
-              <ha-icon .icon=${level.icon || 'mdi:circle-outline'}
-                       style="color:${level.color || 'inherit'}"></ha-icon>
+              <ha-icon .icon=${level.icon ?? 'mdi:circle-outline'}
+                       style=${styleMap({ color: level.color ?? 'inherit' })}></ha-icon>
               <span class="level-name">${level.label ?? `Level ${idx + 1}`}</span>
               <span class="level-range">${level.min} – ${level.max}</span>
               <button class="remove-btn" @click=${() => this._removeLevel(idx)}>Remove</button>
