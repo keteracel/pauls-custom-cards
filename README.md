@@ -26,6 +26,22 @@ A full-bleed background colour card that reflects the current state of a sensor.
 3. Go to **Settings → Dashboards → Resources** and add `/local/pauls-cards.js` as a **JavaScript module**.
 4. Reload your browser.
 
+## Updating
+
+### Via HACS
+
+1. Open HACS in your Home Assistant sidebar.
+2. Go to **Frontend**.
+3. Find **Paul's Custom Cards** in the list — if an update is available it will be highlighted.
+4. Click on it and then click **Download** (HACS will fetch the new version).
+5. Reload your browser.
+
+### Manual
+
+1. Download the new `pauls-cards.js` from the [latest release](https://github.com/keteracel/pauls-custom-cards/releases/latest).
+2. Overwrite your existing `config/www/pauls-cards.js` with the new file.
+3. Hard-reload your browser (Ctrl+Shift+R / Cmd+Shift+R) to clear the cached script.
+
 ## Usage
 
 ### Gauge Card
