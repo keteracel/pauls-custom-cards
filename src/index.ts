@@ -1,4 +1,5 @@
 import './cards/gauge-card/gauge-card.js';
+import './cards/flow-card/flow-card.js';
 
 declare global {
   interface Window {
@@ -19,6 +20,16 @@ if (!window.customCards.some(c => c.type === 'paul-gauge-card')) {
     type: 'paul-gauge-card',
     name: "Paul's Gauge Card",
     description: 'Background-color gauge showing sensor state with configurable level colors and icons.',
+    preview: true,
+    documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
+  });
+}
+
+if (!window.customCards.some(c => c.type === 'paul-flow-card')) {
+  window.customCards.push({
+    type: 'paul-flow-card',
+    name: "Paul's Flow Card",
+    description: 'Animated pipe-network diagram for heating/cooling systems with configurable topology.',
     preview: true,
     documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
   });

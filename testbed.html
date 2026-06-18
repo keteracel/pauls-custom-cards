@@ -212,6 +212,98 @@
     </div>
   </section>
 
+  <hr class="divider">
+
+  <h1>Paul's Flow Card — Testbed</h1>
+  <p class="subtitle">Dummy entity states. Active pipes animate; inactive pipes are grey.</p>
+
+  <section>
+    <h2>Simple — 4 nodes (heat pump on, one zone on)</h2>
+    <paul-flow-card id="flow-simple"></paul-flow-card>
+  </section>
+
+  <section>
+    <h2>Full system — 6 nodes, 2 tanks, 2 zones</h2>
+    <paul-flow-card id="flow-full"></paul-flow-card>
+  </section>
+
+  <script type="module">
+    await customElements.whenDefined('paul-flow-card');
+
+    const flowHass = {
+      states: {
+        'binary_sensor.heat_pump_running': { entity_id: 'binary_sensor.heat_pump_running', state: 'on',  attributes: {} },
+        'binary_sensor.pump_running':      { entity_id: 'binary_sensor.pump_running',      state: 'on',  attributes: {} },
+        'binary_sensor.tank1_valve':       { entity_id: 'binary_sensor.tank1_valve',       state: 'on',  attributes: {} },
+        'binary_sensor.tank2_valve':       { entity_id: 'binary_sensor.tank2_valve',       state: 'off', attributes: {} },
+        'sensor.hp_flow_temp':             { entity_id: 'sensor.hp_flow_temp',             state: '42',  attributes: { unit_of_measurement: '°C' } },
+        'sensor.hp_return_temp':           { entity_id: 'sensor.hp_return_temp',           state: '35',  attributes: { unit_of_measurement: '°C' } },
+        'sensor.tank1_temp':               { entity_id: 'sensor.tank1_temp',               state: '55.2', attributes: { unit_of_measurement: '°C' } },
+        'sensor.tank2_temp':               { entity_id: 'sensor.tank2_temp',               state: '48.7', attributes: { unit_of_measurement: '°C' } },
+        'switch.zone1_valve':              { entity_id: 'switch.zone1_valve',              state: 'on',  attributes: {} },
+        'switch.zone2_valve':              { entity_id: 'switch.zone2_valve',              state: 'off', attributes: {} },
+        'climate.zone1':                   { entity_id: 'climate.zone1', state: 'heat', attributes: { current_temperature: 21.5 } },
+        'climate.zone2':                   { entity_id: 'climate.zone2', state: 'off',  attributes: { current_temperature: 18.3 } },
+      },
+    };
+
+    const simple = document.getElementById('flow-simple');
+    simple.setConfig({
+      type: 'custom:paul-flow-card',
+      title: 'Simple System',
+      height: 260,
+      cell_size: 120,
+      nodes: [
+        { id: 'hp',   type: 'heat_pump', label: 'Heat Pump',   position: [0, 0],
+          entities: { state: 'binary_sensor.heat_pump_running', temp_in: 'sensor.hp_flow_temp', temp_out: 'sensor.hp_return_temp' } },
+        { id: 'pump', type: 'pump',      label: 'Circ Pump',   position: [1, 0],
+          entities: { state: 'binary_sensor.pump_running' } },
+        { id: 'tank', type: 'tank',      label: 'Buffer Tank', position: [2, 0],
+          entities: { state: 'binary_sensor.tank1_valve', temperature: 'sensor.tank1_temp' } },
+        { id: 'zone', type: 'zone',      label: 'Living Room', position: [3, 0],
+          entities: { climate: 'climate.zone1', valve: 'switch.zone1_valve' } },
+      ],
+      edges: [
+        { from: 'hp',   to: 'pump', color: '#ff6600' },
+        { from: 'pump', to: 'tank', color: '#ff6600' },
+        { from: 'tank', to: 'zone', color: '#ff6600' },
+      ],
+    });
+    simple.hass = flowHass;
+
+    const full = document.getElementById('flow-full');
+    full.setConfig({
+      type: 'custom:paul-flow-card',
+      title: 'Full Heating System',
+      height: 380,
+      cell_size: 120,
+      nodes: [
+        { id: 'hp',    type: 'heat_pump', label: 'Ground Source HP', position: [0, 1],
+          entities: { state: 'binary_sensor.heat_pump_running', temp_in: 'sensor.hp_flow_temp', temp_out: 'sensor.hp_return_temp' } },
+        { id: 'pump',  type: 'pump',      label: 'Circ Pump',        position: [1, 1],
+          entities: { state: 'binary_sensor.pump_running' } },
+        { id: 'tank1', type: 'tank',      label: 'Hot Tank',         position: [2, 0],
+          entities: { state: 'binary_sensor.tank1_valve', temperature: 'sensor.tank1_temp' } },
+        { id: 'tank2', type: 'tank',      label: 'Buffer Tank',      position: [2, 2],
+          entities: { state: 'binary_sensor.tank2_valve', temperature: 'sensor.tank2_temp' } },
+        { id: 'zone1', type: 'zone',      label: 'Living Room',      position: [3, 0],
+          entities: { climate: 'climate.zone1', valve: 'switch.zone1_valve' } },
+        { id: 'zone2', type: 'zone',      label: 'Bedroom',          position: [3, 2],
+          entities: { climate: 'climate.zone2', valve: 'switch.zone2_valve' } },
+      ],
+      edges: [
+        { from: 'hp',    to: 'pump',  color: '#ff6600' },
+        { from: 'pump',  to: 'tank1', color: '#ff6600' },
+        { from: 'pump',  to: 'tank2' },
+        { from: 'tank1', to: 'zone1', color: '#ff6600' },
+        { from: 'tank2', to: 'zone2' },
+      ],
+    });
+    full.hass = flowHass;
+  </script>
+
+  <hr class="divider">
+
   <script type="module">
     await customElements.whenDefined('paul-gauge-card');
 
