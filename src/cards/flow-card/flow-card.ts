@@ -84,6 +84,9 @@ export class FlowCard extends LitElement {
     if (config.cell_size !== undefined && (config.cell_size <= 0 || !Number.isFinite(config.cell_size))) {
       throw new Error('[paul-flow-card] cell_size must be a positive number.');
     }
+    if (config.height !== undefined && (config.height <= 0 || !Number.isFinite(config.height))) {
+      throw new Error('[paul-flow-card] height must be a positive number.');
+    }
 
     this._nodes = config.nodes.map(n => {
       if (!n.position) throw new Error(`[paul-flow-card] Node "${n.id}" must have a position.`);
@@ -144,7 +147,14 @@ export class FlowCard extends LitElement {
     const fromNode = this._nodeMap.get(edge.from);
     const toNode = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return false;
-    return this._isNodeOn(fromNode) && this._isNodeOn(toNode);
+    if (!this._isNodeOn(fromNode)) return false;
+    if (toNode.type !== 'junction') return this._isNodeOn(toNode);
+    // Junction is passthrough — active only if at least one immediately downstream node is on
+    return this._config.edges.some(e => {
+      if (e.from !== toNode.id) return false;
+      const downstream = this._nodeMap.get(e.to);
+      return downstream ? this._isNodeOn(downstream) : false;
+    });
   }
 
   private _getDisplayTemp(node: ResolvedNode): string | null {
