@@ -575,7 +575,12 @@
           input.type = 'number';
           input.step = '0.1';
           input.value = current ? current.state : '0';
-          input.addEventListener('input', () => setFlowEntityState(entityId, input.value));
+          input.addEventListener('input', () => {
+            // Ignore transient intermediate values while typing (e.g. "-", "1.")
+            // so the entity state never briefly becomes non-numeric.
+            if (input.value === '' || !Number.isFinite(parseFloat(input.value))) return;
+            setFlowEntityState(entityId, input.value);
+          });
           row.appendChild(input);
         } else if (domain === 'climate') {
           const input = document.createElement('input');
