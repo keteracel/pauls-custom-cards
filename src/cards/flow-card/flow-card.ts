@@ -293,7 +293,7 @@ export class FlowCard extends LitElement {
     return html`
       <ha-card>
         ${this._config.title ? html`<div class="card-header">${this._config.title}</div>` : ''}
-        <div class="flow-wrapper" style="height:${height}px">
+        <div class="flow-wrapper" style="aspect-ratio:${vbW} / ${vbH}; min-height:${height}px">
           <svg viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet"
                xmlns="http://www.w3.org/2000/svg">
             <g class="edges">

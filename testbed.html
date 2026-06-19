@@ -388,6 +388,14 @@
   <hr class="divider">
 
   <section>
+    <h2>Wide card — regression check for #18</h2>
+    <p class="subtitle">7×3 grid, cell_size 120, height 260 — same shape as the reported bug. Should fill the available width instead of rendering as a small centered strip.</p>
+    <paul-flow-card id="flow-wide"></paul-flow-card>
+  </section>
+
+  <hr class="divider">
+
+  <section>
     <h2>Interactive — toggle entity states</h2>
     <div class="interactive-row">
       <div class="interactive-left">
@@ -477,6 +485,54 @@
       ],
     });
     full.hass = flowHass;
+
+    // --- Wide card regression check (#18): same 7x3 grid shape as the reported bug ---
+
+    const wide = document.getElementById('flow-wide');
+    wide.setConfig({
+      type: 'custom:paul-flow-card',
+      title: 'Interactive System',
+      height: 260,
+      cell_size: 120,
+      nodes: [
+        { id: 'hp',         type: 'heat_pump', label: 'GS Heat Pump',  position: [0, 1],
+          entities: { state: 'binary_sensor.heat_pump_running', temp_in: 'sensor.hp_flow_temp', temp_out: 'sensor.hp_return_temp' } },
+        { id: 'tank1',      type: 'tank',      label: 'Storage Tank', position: [1, 1],
+          entities: { state: 'binary_sensor.pump_running', temperature: 'sensor.tank1_temp' } },
+        { id: 'tankHot',    type: 'tank',      label: 'Hot Tank',      position: [2, 0],
+          entities: { state: 'binary_sensor.tank1_valve', temperature: 'sensor.tank1_temp' } },
+        { id: 'tankCold',   type: 'tank',      label: 'Cold Tank',     position: [2, 2],
+          entities: { state: 'binary_sensor.tank2_valve', temperature: 'sensor.tank2_temp' } },
+        { id: 'v1',         type: 'valve',     label: 'Valve (hot in)',  position: [3, 0],
+          entities: { state: 'binary_sensor.tank1_valve' } },
+        { id: 'v3',         type: 'valve',     label: 'Valve (cold in)', position: [3, 2],
+          entities: { state: 'binary_sensor.tank2_valve' } },
+        { id: 'pump',       type: 'pump',      label: 'Circulating Pump', position: [4, 1],
+          entities: { state: 'binary_sensor.pump_running' } },
+        { id: 'v2',         type: 'valve',     label: 'Valve (hot out)',  position: [5, 0],
+          entities: { state: 'switch.zone1_valve' } },
+        { id: 'v4',         type: 'valve',     label: 'Valve (cold out)', position: [5, 2],
+          entities: { state: 'switch.zone2_valve' } },
+        { id: 'zoneHeating', type: 'zone',     label: 'House Heating', position: [6, 0],
+          entities: { climate: 'climate.zone1', valve: 'switch.zone1_valve' } },
+        { id: 'zoneCooling', type: 'zone',     label: 'House Cooling', position: [6, 2],
+          entities: { climate: 'climate.zone2', valve: 'switch.zone2_valve' } },
+      ],
+      edges: [
+        { from: 'hp',       to: 'tank1',      color: '#ff6600' },
+        { from: 'tank1',    to: 'tankHot',    color: '#ff6600' },
+        { from: 'tank1',    to: 'tankCold',   color: '#ff6600' },
+        { from: 'tankHot',  to: 'v1',         color: '#ff6600' },
+        { from: 'v1',       to: 'pump',       color: '#ff6600' },
+        { from: 'pump',     to: 'v2',         color: '#ff6600' },
+        { from: 'tankCold', to: 'v3',         color: '#ff6600' },
+        { from: 'v3',       to: 'pump',       color: '#ff6600' },
+        { from: 'pump',     to: 'v4',         color: '#ff6600' },
+        { from: 'v2',       to: 'zoneHeating', color: '#ff6600' },
+        { from: 'v4',       to: 'zoneCooling', color: '#ff6600' },
+      ],
+    });
+    wide.hass = flowHass;
 
     // --- Interactive flow card: toggle entity states + config YAML ---
 
