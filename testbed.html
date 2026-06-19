@@ -43,6 +43,66 @@
 
   <script type="module" src="./dist/pauls-cards.js"></script>
 
+  <!-- YAML editor (dev-only, testbed.html is not part of the build) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/yaml/yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+
+  <script>
+    // Shared helper for every interactive section's YAML editor.
+    // Debounces parsing, calls onApply only with valid YAML, and exposes
+    // setText() so external controls can push state into the editor without
+    // re-triggering onApply (avoids editor <-> control feedback loops).
+    function createYamlEditor({ container, errorContainer, initialObj, onApply }) {
+      let applying = false;
+      let debounceTimer = null;
+
+      const cm = CodeMirror(container, {
+        value: jsyaml.dump(initialObj),
+        mode: 'yaml',
+        theme: 'material-darker',
+        lineNumbers: true,
+        tabSize: 2,
+      });
+
+      function showError(message) {
+        if (errorContainer) errorContainer.textContent = message || '';
+      }
+
+      cm.on('change', () => {
+        if (applying) return; // change came from setText(), not the user
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          let parsed;
+          try {
+            parsed = jsyaml.load(cm.getValue());
+          } catch (e) {
+            showError(e.message || String(e));
+            return;
+          }
+          try {
+            onApply(parsed);
+            showError('');
+          } catch (e) {
+            showError(e.message || String(e));
+          }
+        }, 300);
+      });
+
+      return {
+        setText(obj) {
+          applying = true;
+          const cursor = cm.getCursor();
+          cm.setValue(jsyaml.dump(obj));
+          cm.setCursor(cursor);
+          applying = false;
+        },
+      };
+    }
+  </script>
+
   <style>
     :root {
       --card-background-color: #1c1c1e;
@@ -164,6 +224,88 @@
       border-top: 1px solid #2c2c2e;
       margin-bottom: 40px;
     }
+
+    /* Interactive row: live card(s)/controls on the left, YAML editor(s) on the right */
+    .interactive-row {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .interactive-left {
+      flex: 0 0 auto;
+    }
+
+    .yaml-editors {
+      display: flex;
+      gap: 16px;
+      flex: 1 1 auto;
+      min-width: 280px;
+    }
+
+    .yaml-editor-block {
+      flex: 1 1 0;
+      min-width: 280px;
+      max-width: 420px;
+    }
+
+    .yaml-editor-block .card-label {
+      text-align: left;
+    }
+
+    .yaml-editor-container .CodeMirror {
+      height: 280px;
+      font-size: 0.8rem;
+      border-radius: 8px;
+    }
+
+    .yaml-error {
+      color: var(--error-color);
+      font-size: 0.75rem;
+      margin-top: 6px;
+      min-height: 1em;
+      white-space: pre-wrap;
+    }
+
+    /* Flow Card entity controls */
+    .flow-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 240px;
+      margin-top: 16px;
+    }
+
+    .flow-control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.8rem;
+    }
+
+    .flow-control-row .entity-id {
+      color: var(--secondary-text-color);
+      font-family: monospace;
+      font-size: 0.7rem;
+    }
+
+    .flow-control-row input[type=number] {
+      width: 70px;
+      background: #1c1c1e;
+      color: var(--primary-text-color);
+      border: 1px solid #2c2c2e;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+
+    .flow-control-row input[type=checkbox] {
+      accent-color: #4caf50;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -195,19 +337,35 @@
 
   <section>
     <h2>Interactive — drag to change value</h2>
-    <div class="slider-row">
-      <label>Temperature</label>
-      <input type="range" id="slider" min="0" max="50" value="22" step="0.5">
-      <span id="live-value">22.0 °C</span>
-    </div>
-    <div class="interactive-grid">
-      <div>
-        <div class="card-label">Distinct</div>
-        <paul-gauge-card id="live-distinct"></paul-gauge-card>
+    <div class="interactive-row">
+      <div class="interactive-left">
+        <div class="slider-row">
+          <label>Temperature</label>
+          <input type="range" id="slider" min="0" max="50" value="22" step="0.5">
+          <span id="live-value">22.0 °C</span>
+        </div>
+        <div class="interactive-grid">
+          <div>
+            <div class="card-label">Distinct</div>
+            <paul-gauge-card id="live-distinct"></paul-gauge-card>
+          </div>
+          <div>
+            <div class="card-label">Gradient</div>
+            <paul-gauge-card id="live-gradient"></paul-gauge-card>
+          </div>
+        </div>
       </div>
-      <div>
-        <div class="card-label">Gradient</div>
-        <paul-gauge-card id="live-gradient"></paul-gauge-card>
+      <div class="yaml-editors">
+        <div class="yaml-editor-block">
+          <div class="card-label">Distinct — config YAML</div>
+          <div class="yaml-editor-container" id="yaml-distinct"></div>
+          <div class="yaml-error" id="yaml-distinct-error"></div>
+        </div>
+        <div class="yaml-editor-block">
+          <div class="card-label">Gradient — config YAML</div>
+          <div class="yaml-editor-container" id="yaml-gradient"></div>
+          <div class="yaml-error" id="yaml-gradient-error"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -225,6 +383,25 @@
   <section>
     <h2>Full system — 6 nodes, 2 tanks, 2 zones</h2>
     <paul-flow-card id="flow-full"></paul-flow-card>
+  </section>
+
+  <hr class="divider">
+
+  <section>
+    <h2>Interactive — toggle entity states</h2>
+    <div class="interactive-row">
+      <div class="interactive-left">
+        <paul-flow-card id="flow-interactive"></paul-flow-card>
+        <div class="flow-controls" id="flow-controls"></div>
+      </div>
+      <div class="yaml-editors">
+        <div class="yaml-editor-block">
+          <div class="card-label">Config YAML — nodes / edges</div>
+          <div class="yaml-editor-container" id="yaml-flow"></div>
+          <div class="yaml-error" id="yaml-flow-error"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <script type="module">
@@ -300,6 +477,141 @@
       ],
     });
     full.hass = flowHass;
+
+    // --- Interactive flow card: toggle entity states + config YAML ---
+
+    function makeFlowControlsHass() {
+      return {
+        states: {
+          'binary_sensor.heat_pump_running': { entity_id: 'binary_sensor.heat_pump_running', state: 'on', attributes: {} },
+          'binary_sensor.pump_running':      { entity_id: 'binary_sensor.pump_running',      state: 'on', attributes: {} },
+          'binary_sensor.tank1_valve':       { entity_id: 'binary_sensor.tank1_valve',       state: 'on', attributes: {} },
+          'switch.zone1_valve':              { entity_id: 'switch.zone1_valve',              state: 'on', attributes: {} },
+          'sensor.hp_flow_temp':             { entity_id: 'sensor.hp_flow_temp',             state: '42', attributes: { unit_of_measurement: '°C' } },
+          'sensor.hp_return_temp':           { entity_id: 'sensor.hp_return_temp',           state: '35', attributes: { unit_of_measurement: '°C' } },
+          'sensor.tank1_temp':               { entity_id: 'sensor.tank1_temp',               state: '55.2', attributes: { unit_of_measurement: '°C' } },
+          'climate.zone1':                   { entity_id: 'climate.zone1', state: 'heat', attributes: { current_temperature: 21.5 } },
+        },
+      };
+    }
+
+    let flowControlsHass = makeFlowControlsHass();
+
+    const flowInteractiveConfig = {
+      type: 'custom:paul-flow-card',
+      title: 'Interactive System',
+      height: 260,
+      cell_size: 120,
+      nodes: [
+        { id: 'hp',   type: 'heat_pump', label: 'Heat Pump',   position: [0, 0],
+          entities: { state: 'binary_sensor.heat_pump_running', temp_in: 'sensor.hp_flow_temp', temp_out: 'sensor.hp_return_temp' } },
+        { id: 'pump', type: 'pump',      label: 'Circ Pump',   position: [1, 0],
+          entities: { state: 'binary_sensor.pump_running' } },
+        { id: 'tank', type: 'tank',      label: 'Buffer Tank', position: [2, 0],
+          entities: { state: 'binary_sensor.tank1_valve', temperature: 'sensor.tank1_temp' } },
+        { id: 'zone', type: 'zone',      label: 'Living Room', position: [3, 0],
+          entities: { climate: 'climate.zone1', valve: 'switch.zone1_valve' } },
+      ],
+      edges: [
+        { from: 'hp',   to: 'pump', color: '#ff6600' },
+        { from: 'pump', to: 'tank', color: '#ff6600' },
+        { from: 'tank', to: 'zone', color: '#ff6600' },
+      ],
+    };
+
+    const flowInteractive = document.getElementById('flow-interactive');
+    flowInteractive.setConfig(flowInteractiveConfig);
+    flowInteractive.hass = flowControlsHass;
+
+    function setFlowEntityState(entityId, newState, extraAttributes) {
+      const prevEntity = flowControlsHass.states[entityId] || { entity_id: entityId, attributes: {} };
+      flowControlsHass = {
+        states: {
+          ...flowControlsHass.states,
+          [entityId]: {
+            ...prevEntity,
+            state: newState,
+            attributes: extraAttributes ? { ...prevEntity.attributes, ...extraAttributes } : prevEntity.attributes,
+          },
+        },
+      };
+      flowInteractive.hass = flowControlsHass;
+    }
+
+    // Derives one control per entity referenced in config.nodes[].entities, deduped by entity id.
+    function collectFlowEntities(config) {
+      const seen = new Map();
+      for (const node of config.nodes || []) {
+        for (const entityId of Object.values(node.entities || {})) {
+          if (entityId && !seen.has(entityId)) seen.set(entityId, node.label || node.id);
+        }
+      }
+      return seen;
+    }
+
+    function renderFlowControls(config) {
+      const container = document.getElementById('flow-controls');
+      container.innerHTML = '';
+      const entities = collectFlowEntities(config);
+
+      for (const [entityId, nodeLabel] of entities) {
+        const row = document.createElement('div');
+        row.className = 'flow-control-row';
+
+        const labelWrap = document.createElement('div');
+        const label = document.createElement('div');
+        label.textContent = nodeLabel;
+        const idEl = document.createElement('div');
+        idEl.className = 'entity-id';
+        idEl.textContent = entityId;
+        labelWrap.append(label, idEl);
+        row.appendChild(labelWrap);
+
+        const domain = entityId.split('.')[0];
+        const current = flowControlsHass.states[entityId];
+
+        if (domain === 'sensor') {
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.step = '0.1';
+          input.value = current ? current.state : '0';
+          input.addEventListener('input', () => {
+            // Ignore transient intermediate values while typing (e.g. "-", "1.")
+            // so the entity state never briefly becomes non-numeric.
+            if (input.value === '' || !Number.isFinite(parseFloat(input.value))) return;
+            setFlowEntityState(entityId, input.value);
+          });
+          row.appendChild(input);
+        } else if (domain === 'climate') {
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = current ? current.state !== 'off' : false;
+          input.addEventListener('change', () => setFlowEntityState(entityId, input.checked ? 'heat' : 'off'));
+          row.appendChild(input);
+        } else {
+          // binary_sensor / switch
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = current ? current.state === 'on' : false;
+          input.addEventListener('change', () => setFlowEntityState(entityId, input.checked ? 'on' : 'off'));
+          row.appendChild(input);
+        }
+
+        container.appendChild(row);
+      }
+    }
+
+    renderFlowControls(flowInteractiveConfig);
+
+    createYamlEditor({
+      container: document.getElementById('yaml-flow'),
+      errorContainer: document.getElementById('yaml-flow-error'),
+      initialObj: flowInteractiveConfig,
+      onApply: (config) => {
+        flowInteractive.setConfig(config);
+        renderFlowControls(config);
+      },
+    });
   </script>
 
   <hr class="divider">
@@ -380,8 +692,25 @@
     const liveGradient = document.getElementById('live-gradient');
     const LIVE_ENTITY = 'sensor.live_temp';
 
-    liveDistinct.setConfig({ ...baseConfig, entity: LIVE_ENTITY, color_mode: 'distinct', name: 'Living Room' });
-    liveGradient.setConfig({ ...baseConfig, entity: LIVE_ENTITY, color_mode: 'gradient', name: 'Living Room' });
+    const liveDistinctConfig = { ...baseConfig, entity: LIVE_ENTITY, color_mode: 'distinct', name: 'Living Room' };
+    const liveGradientConfig = { ...baseConfig, entity: LIVE_ENTITY, color_mode: 'gradient', name: 'Living Room' };
+
+    liveDistinct.setConfig(liveDistinctConfig);
+    liveGradient.setConfig(liveGradientConfig);
+
+    createYamlEditor({
+      container: document.getElementById('yaml-distinct'),
+      errorContainer: document.getElementById('yaml-distinct-error'),
+      initialObj: liveDistinctConfig,
+      onApply: (config) => liveDistinct.setConfig(config),
+    });
+
+    createYamlEditor({
+      container: document.getElementById('yaml-gradient'),
+      errorContainer: document.getElementById('yaml-gradient-error'),
+      initialObj: liveGradientConfig,
+      onApply: (config) => liveGradient.setConfig(config),
+    });
 
     function updateLive(value) {
       const hass = makeHass(LIVE_ENTITY, value, 'Living Room');
