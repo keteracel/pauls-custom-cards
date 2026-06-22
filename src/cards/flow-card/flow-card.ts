@@ -259,17 +259,88 @@ export class FlowCard extends LitElement {
     `;
   }
 
+  /** Distance from a node's center to its N/S/E/W boundary, used as pipe anchor offsets. */
+  private _anchorOffsets(type: ResolvedNode['type']): { N: number; S: number; E: number; W: number } {
+    switch (type) {
+      case 'heat_pump': return { N: 16, S: 16, E: 24, W: 24 };
+      case 'tank':      return { N: 22, S: 22, E: 18, W: 18 };
+      case 'zone':      return { N: 20, S: 16, E: 20, W: 20 };
+      case 'junction':  return { N: 6,  S: 6,  E: 6,  W: 6 };
+      default:          return { N: 16, S: 16, E: 16, W: 16 }; // pump, valve
+    }
+  }
+
+  private _anchorPoint(node: ResolvedNode, side: 'N' | 'S' | 'E' | 'W', cellWidth: number, cellHeight: number): [number, number] {
+    const cx = (node._col + 0.5) * cellWidth;
+    const cy = (node._row + 0.5) * cellHeight;
+    const o  = this._anchorOffsets(node.type);
+    switch (side) {
+      case 'N': return [cx, cy - o.N];
+      case 'S': return [cx, cy + o.S];
+      case 'E': return [cx + o.E, cy];
+      case 'W': return [cx - o.W, cy];
+    }
+  }
+
+  /** Picks the N/S/E/W anchor pair facing each other, based on which axis separates the nodes more. */
+  private _anchorSides(fromNode: ResolvedNode, toNode: ResolvedNode, cellWidth: number, cellHeight: number):
+    { from: 'N' | 'S' | 'E' | 'W'; to: 'N' | 'S' | 'E' | 'W' } {
+    const dx = (toNode._col - fromNode._col) * cellWidth;
+    const dy = (toNode._row - fromNode._row) * cellHeight;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return dx >= 0 ? { from: 'E', to: 'W' } : { from: 'W', to: 'E' };
+    }
+    return dy >= 0 ? { from: 'S', to: 'N' } : { from: 'N', to: 'S' };
+  }
+
+  /** Builds an orthogonal (Manhattan-style) polyline between two anchored points. */
+  private _orthogonalPoints(
+    x1: number, y1: number, x2: number, y2: number, axis: 'horizontal' | 'vertical',
+  ): [number, number][] {
+    if (axis === 'horizontal') {
+      if (y1 === y2) return [[x1, y1], [x2, y2]];
+      const mx = (x1 + x2) / 2;
+      return [[x1, y1], [mx, y1], [mx, y2], [x2, y2]];
+    }
+    if (x1 === x2) return [[x1, y1], [x2, y2]];
+    const my = (y1 + y2) / 2;
+    return [[x1, y1], [x1, my], [x2, my], [x2, y2]];
+  }
+
+  /** Renders a polyline as a path with soft (curved, not sharp) corners. */
+  private _roundedPath(points: [number, number][], radius: number): string {
+    if (points.length < 2) return '';
+    let d = `M ${points[0][0]} ${points[0][1]}`;
+    for (let i = 1; i < points.length - 1; i++) {
+      const [px, py] = points[i - 1];
+      const [cx, cy]  = points[i];
+      const [nx, ny] = points[i + 1];
+      const distPrev = Math.hypot(cx - px, cy - py);
+      const distNext = Math.hypot(nx - cx, ny - cy);
+      const r = Math.min(radius, distPrev / 2, distNext / 2);
+      const p1x = cx + (px - cx) * (r / distPrev);
+      const p1y = cy + (py - cy) * (r / distPrev);
+      const p2x = cx + (nx - cx) * (r / distNext);
+      const p2y = cy + (ny - cy) * (r / distNext);
+      d += ` L ${p1x} ${p1y} Q ${cx} ${cy} ${p2x} ${p2y}`;
+    }
+    const [lastX, lastY] = points[points.length - 1];
+    d += ` L ${lastX} ${lastY}`;
+    return d;
+  }
+
   private _renderEdge(edge: FlowEdge, cellWidth: number, cellHeight: number): TemplateResult {
     const fromNode = this._nodeMap.get(edge.from);
     const toNode   = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return svg``;
 
-    const cx1 = (fromNode._col + 0.5) * cellWidth;
-    const cy1 = (fromNode._row + 0.5) * cellHeight;
-    const cx2 = (toNode._col   + 0.5) * cellWidth;
-    const cy2 = (toNode._row   + 0.5) * cellHeight;
-    const mx  = (cx1 + cx2) / 2;
-    const d   = `M ${cx1} ${cy1} C ${mx} ${cy1} ${mx} ${cy2} ${cx2} ${cy2}`;
+    const { from: fromSide, to: toSide } = this._anchorSides(fromNode, toNode, cellWidth, cellHeight);
+    const [x1, y1] = this._anchorPoint(fromNode, fromSide, cellWidth, cellHeight);
+    const [x2, y2] = this._anchorPoint(toNode, toSide, cellWidth, cellHeight);
+
+    const axis   = (fromSide === 'E' || fromSide === 'W') ? 'horizontal' : 'vertical';
+    const points = this._orthogonalPoints(x1, y1, x2, y2, axis);
+    const d      = this._roundedPath(points, 18);
 
     const isActive = this._isEdgeActive(edge);
     const color    = edge.color ?? '#ff6600';
