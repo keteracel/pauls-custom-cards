@@ -81,8 +81,11 @@ export class FlowCard extends LitElement {
       if (!seenIds.has(edge.from)) throw new Error(`[paul-flow-card] Edge references unknown node: "${edge.from}".`);
       if (!seenIds.has(edge.to))   throw new Error(`[paul-flow-card] Edge references unknown node: "${edge.to}".`);
     }
-    if (config.cell_size !== undefined && (config.cell_size <= 0 || !Number.isFinite(config.cell_size))) {
-      throw new Error('[paul-flow-card] cell_size must be a positive number.');
+    for (const field of ['cell_size', 'cell_width', 'cell_height'] as const) {
+      const value = config[field];
+      if (value !== undefined && (value <= 0 || !Number.isFinite(value))) {
+        throw new Error(`[paul-flow-card] ${field} must be a positive number.`);
+      }
     }
     if (config.height !== undefined && (config.height <= 0 || !Number.isFinite(config.height))) {
       throw new Error('[paul-flow-card] height must be a positive number.');
@@ -234,9 +237,9 @@ export class FlowCard extends LitElement {
     }
   }
 
-  private _renderNode(node: ResolvedNode, cellSize: number): TemplateResult {
-    const cx     = (node._col + 0.5) * cellSize;
-    const cy     = (node._row + 0.5) * cellSize;
+  private _renderNode(node: ResolvedNode, cellWidth: number, cellHeight: number): TemplateResult {
+    const cx     = (node._col + 0.5) * cellWidth;
+    const cy     = (node._row + 0.5) * cellHeight;
     const isOn   = this._isNodeOn(node);
     const temp   = this._getDisplayTemp(node);
     const labelY = cy + this._labelOffsetY(node.type);
@@ -256,15 +259,15 @@ export class FlowCard extends LitElement {
     `;
   }
 
-  private _renderEdge(edge: FlowEdge, cellSize: number): TemplateResult {
+  private _renderEdge(edge: FlowEdge, cellWidth: number, cellHeight: number): TemplateResult {
     const fromNode = this._nodeMap.get(edge.from);
     const toNode   = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return svg``;
 
-    const cx1 = (fromNode._col + 0.5) * cellSize;
-    const cy1 = (fromNode._row + 0.5) * cellSize;
-    const cx2 = (toNode._col   + 0.5) * cellSize;
-    const cy2 = (toNode._row   + 0.5) * cellSize;
+    const cx1 = (fromNode._col + 0.5) * cellWidth;
+    const cy1 = (fromNode._row + 0.5) * cellHeight;
+    const cx2 = (toNode._col   + 0.5) * cellWidth;
+    const cy2 = (toNode._row   + 0.5) * cellHeight;
     const mx  = (cx1 + cx2) / 2;
     const d   = `M ${cx1} ${cy1} C ${mx} ${cy1} ${mx} ${cy2} ${cx2} ${cy2}`;
 
@@ -283,12 +286,13 @@ export class FlowCard extends LitElement {
   protected override render() {
     if (!this._config || !this.hass) return html``;
 
-    const cellSize = this._config.cell_size ?? 120;
+    const cellWidth  = this._config.cell_width  ?? this._config.cell_size ?? 120;
+    const cellHeight = this._config.cell_height ?? this._config.cell_size ?? 120;
     const height   = this._config.height ?? 300;
     const maxCol   = Math.max(...this._nodes.map(n => n._col));
     const maxRow   = Math.max(...this._nodes.map(n => n._row));
-    const vbW      = (maxCol + 1) * cellSize;
-    const vbH      = (maxRow + 1) * cellSize;
+    const vbW      = (maxCol + 1) * cellWidth;
+    const vbH      = (maxRow + 1) * cellHeight;
 
     return html`
       <ha-card>
@@ -297,10 +301,10 @@ export class FlowCard extends LitElement {
           <svg viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet"
                xmlns="http://www.w3.org/2000/svg">
             <g class="edges">
-              ${this._config.edges.map(e => this._renderEdge(e, cellSize))}
+              ${this._config.edges.map(e => this._renderEdge(e, cellWidth, cellHeight))}
             </g>
             <g class="nodes">
-              ${this._nodes.map(n => this._renderNode(n, cellSize))}
+              ${this._nodes.map(n => this._renderNode(n, cellWidth, cellHeight))}
             </g>
           </svg>
         </div>

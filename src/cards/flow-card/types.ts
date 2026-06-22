@@ -28,7 +28,10 @@ export interface FlowCardConfig {
   type: string;
   title?: string;
   height?: number;
+  /** @deprecated Use cell_width/cell_height instead. Used as a fallback for either axis. */
   cell_size?: number;
+  cell_width?: number;
+  cell_height?: number;
   nodes: FlowNode[];
   edges: FlowEdge[];
 }
