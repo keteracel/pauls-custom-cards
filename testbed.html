@@ -396,6 +396,23 @@
   <hr class="divider">
 
   <section>
+    <h2>cell_width / cell_height — fix for #21</h2>
+    <p class="subtitle">Same 5×6 grid topology as the over-tall layout reported in #21. Left: old square <code>cell_size: 120</code>. Right: independent <code>cell_width: 120</code> / <code>cell_height: 70</code> — same readability, much less vertical space.</p>
+    <div class="interactive-row">
+      <div class="interactive-left">
+        <div class="card-label">Before — cell_size: 120</div>
+        <paul-flow-card id="flow-tall-before"></paul-flow-card>
+      </div>
+      <div class="interactive-left">
+        <div class="card-label">After — cell_width: 120, cell_height: 70</div>
+        <paul-flow-card id="flow-tall-after"></paul-flow-card>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section>
     <h2>Interactive — toggle entity states</h2>
     <div class="interactive-row">
       <div class="interactive-left">
@@ -533,6 +550,70 @@
       ],
     });
     wide.hass = flowHass;
+
+    // --- cell_width/cell_height demo (#21): same tall topology, before vs after ---
+
+    const tallNodes = [
+      { id: 'hp',          type: 'heat_pump', label: 'Heat Pump',      position: [0, 1],
+        entities: { state: 'binary_sensor.heat_pump_running', temp_in: 'sensor.hp_flow_temp', temp_out: 'sensor.hp_return_temp' } },
+      { id: 'hotCyl',      type: 'tank',      label: 'Hot Water Cyl.', position: [1, 0],
+        entities: { state: 'binary_sensor.tank1_valve', temperature: 'sensor.tank1_temp' } },
+      { id: 'hotPump',     type: 'pump',      label: 'Hot Water Pump', position: [2, 0],
+        entities: { state: 'binary_sensor.pump_running' } },
+      { id: 'heatingCyl',  type: 'tank',      label: 'Heating Cyl.',   position: [1, 2],
+        entities: { state: 'binary_sensor.tank1_valve', temperature: 'sensor.tank1_temp' } },
+      { id: 'vHotReturn',  type: 'valve',     label: 'Valve (hot return)', position: [2, 1],
+        entities: { state: 'switch.zone1_valve' } },
+      { id: 'vHotOut',     type: 'valve',     label: 'Valve (hot out)',    position: [2, 2],
+        entities: { state: 'switch.zone1_valve' } },
+      { id: 'circPump',    type: 'pump',      label: 'Circulating Pump', position: [3, 2],
+        entities: { state: 'binary_sensor.pump_running' } },
+      { id: 'house',       type: 'zone',      label: 'House',            position: [4, 2],
+        entities: { climate: 'climate.zone1', valve: 'switch.zone1_valve' } },
+      { id: 'coolingCyl',  type: 'tank',      label: 'Cooling Cyl.',  position: [1, 4],
+        entities: { state: 'binary_sensor.tank2_valve', temperature: 'sensor.tank2_temp' } },
+      { id: 'vColdOut',    type: 'valve',     label: 'Valve (cold out)',    position: [2, 4],
+        entities: { state: 'switch.zone2_valve' } },
+      { id: 'vColdReturn', type: 'valve',     label: 'Valve (cold return)', position: [2, 5],
+        entities: { state: 'switch.zone2_valve' } },
+    ];
+    const tallEdges = [
+      { from: 'hp',          to: 'hotCyl',     color: '#ff6600' },
+      { from: 'hp',          to: 'heatingCyl', color: '#ff6600' },
+      { from: 'hp',          to: 'coolingCyl' },
+      { from: 'hotCyl',      to: 'hotPump',    color: '#ff6600' },
+      { from: 'hotPump',     to: 'house',      color: '#ff6600' },
+      { from: 'vHotReturn',  to: 'circPump',   color: '#ff6600' },
+      { from: 'heatingCyl',  to: 'vHotOut',    color: '#ff6600' },
+      { from: 'vHotOut',     to: 'circPump',   color: '#ff6600' },
+      { from: 'circPump',    to: 'house',      color: '#ff6600' },
+      { from: 'coolingCyl',  to: 'vColdOut' },
+      { from: 'vColdOut',    to: 'circPump' },
+      { from: 'vColdReturn', to: 'circPump' },
+    ];
+
+    const tallBefore = document.getElementById('flow-tall-before');
+    tallBefore.setConfig({
+      type: 'custom:paul-flow-card',
+      title: 'GS Heat Pump',
+      height: 460,
+      cell_size: 120,
+      nodes: tallNodes,
+      edges: tallEdges,
+    });
+    tallBefore.hass = flowHass;
+
+    const tallAfter = document.getElementById('flow-tall-after');
+    tallAfter.setConfig({
+      type: 'custom:paul-flow-card',
+      title: 'GS Heat Pump',
+      height: 280,
+      cell_width: 120,
+      cell_height: 70,
+      nodes: tallNodes,
+      edges: tallEdges,
+    });
+    tallAfter.hass = flowHass;
 
     // --- Interactive flow card: toggle entity states + config YAML ---
 

@@ -10,7 +10,9 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 |---|---|---|---|---|
 | `title` | string | no | — | Card header |
 | `height` | number | no | `300` | SVG container height (px); must be > 0, finite |
-| `cell_size` | number | no | `120` | Grid cell size (px) for node layout; must be > 0, finite |
+| `cell_size` | number | no | `120` | **Deprecated** — fallback for either axis when `cell_width`/`cell_height` are unset; must be > 0, finite |
+| `cell_width` | number | no | `cell_size` ?? `120` | Grid column width (px) for node layout; must be > 0, finite |
+| `cell_height` | number | no | `cell_size` ?? `120` | Grid row height (px) for node layout; must be > 0, finite |
 | `nodes` | `FlowNode[]` | yes, ≥1 | — | See below |
 | `edges` | `FlowEdge[]` | yes (array, may be empty) | — | See below |
 
@@ -43,7 +45,7 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-form`. **Nodes and edges must be hand-edited in the card's YAML** — this is intentional; no UI form exists for grid layout or entity mapping.
 
 ## Rendering Behavior
-- SVG viewBox sized to `(maxCol+1) × cell_size` by `(maxRow+1) × cell_size`.
+- SVG viewBox sized to `(maxCol+1) × cell_width` by `(maxRow+1) × cell_height`.
 - **Node shapes**: heat_pump = rounded rect, tank = tall rect, pump = circle, valve = diamond, zone = pentagon, junction = tiny dot.
 - **Node fill**: `primary-color` if "on", else `card-background-color`.
 - **Node on/off logic**:
@@ -63,7 +65,7 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
 - Node ids required and unique.
 - Node types must be in the valid set.
 - Every edge's `from`/`to` must reference an existing node id.
-- `cell_size`/`height` positive and finite; node `position` coordinates finite.
+- `cell_size`/`cell_width`/`cell_height`/`height` positive and finite; node `position` coordinates finite.
 
 ## Source files
 - `src/cards/flow-card/flow-card.ts`
