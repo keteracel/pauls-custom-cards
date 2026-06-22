@@ -1,5 +1,8 @@
 export type NodeType = 'heat_pump' | 'pump' | 'tank' | 'zone' | 'valve' | 'junction';
 
+/** Which side of a node a pipe connects to: North, South, East, or West. */
+export type AnchorSide = 'N' | 'S' | 'E' | 'W';
+
 export interface NodeEntities {
   state?: string;
   temperature?: string;
@@ -22,6 +25,10 @@ export interface FlowEdge {
   to: string;
   active_entity?: string;
   color?: string;
+  /** Overrides which side of the `from` node this pipe leaves from. Auto-picked if unset. */
+  anchor_start?: AnchorSide;
+  /** Overrides which side of the `to` node this pipe enters. Auto-picked if unset. */
+  anchor_end?: AnchorSide;
 }
 
 export interface FlowCardConfig {
