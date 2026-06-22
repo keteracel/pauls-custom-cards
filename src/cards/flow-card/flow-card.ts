@@ -297,27 +297,32 @@ export class FlowCard extends LitElement {
 
   /**
    * For a diagonal-ish pair of nodes (both row and column differ), the "primary" axis pair is
-   * whichever of horizontal/vertical separates them more, and "alternate" is the other axis —
-   * e.g. a target to the northeast primarily suggests East/West, with North/South as the
-   * alternate. Both ends always share the same axis (never e.g. South on one end and West on
-   * the other), since that's what keeps the orthogonal path geometry consistent. Purely
+   * whichever of horizontal/vertical separates them more *in pixels* — which side looks more
+   * natural to leave from given the actual rendered cell size — and "alternate" is the other
+   * axis. Both ends always share the same axis (never e.g. South on one end and West on the
+   * other), since that's what keeps the orthogonal path geometry consistent. Purely
    * axis-aligned pairs (same row or same column) have no alternate: only one axis makes sense.
-   * Pairs where one axis is overwhelmingly dominant (not roughly diagonal) also get no
-   * alternate — picking the minor axis there would be a worse-looking detour, not a real choice.
+   *
+   * Whether an alternate is even *offered* is judged by grid steps (column/row distance), not
+   * pixel distance: a 1-column, 1-row move is a clean diagonal regardless of `cell_width` vs
+   * `cell_height`, even though non-square cells make it look pixel-lopsided. Using pixel ratio
+   * here would make the alternate disappear just because the cells aren't square.
    */
   private _candidateSides(fromNode: ResolvedNode, toNode: ResolvedNode, cellWidth: number, cellHeight: number):
     { primary: EdgeSides; alternate: EdgeSides | null } {
     const DIAGONAL_RATIO = 0.5;
-    const dx = (toNode._col - fromNode._col) * cellWidth;
-    const dy = (toNode._row - fromNode._row) * cellHeight;
+    const dCol = toNode._col - fromNode._col;
+    const dRow = toNode._row - fromNode._row;
+    const dx = dCol * cellWidth;
+    const dy = dRow * cellHeight;
     const horizontal: EdgeSides = dx >= 0 ? { from: 'E', to: 'W' } : { from: 'W', to: 'E' };
     const vertical:   EdgeSides = dy >= 0 ? { from: 'S', to: 'N' } : { from: 'N', to: 'S' };
 
-    if (dx === 0) return { primary: vertical, alternate: null };
-    if (dy === 0) return { primary: horizontal, alternate: null };
+    if (dCol === 0) return { primary: vertical, alternate: null };
+    if (dRow === 0) return { primary: horizontal, alternate: null };
 
     const [primary, alternate] = Math.abs(dx) >= Math.abs(dy) ? [horizontal, vertical] : [vertical, horizontal];
-    const isDiagonal = Math.min(Math.abs(dx), Math.abs(dy)) / Math.max(Math.abs(dx), Math.abs(dy)) >= DIAGONAL_RATIO;
+    const isDiagonal = Math.min(Math.abs(dCol), Math.abs(dRow)) / Math.max(Math.abs(dCol), Math.abs(dRow)) >= DIAGONAL_RATIO;
     return { primary, alternate: isDiagonal ? alternate : null };
   }
 
