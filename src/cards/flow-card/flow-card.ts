@@ -1,9 +1,10 @@
 import { LitElement, html, svg, css, type CSSResultGroup, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
-import type { FlowCardConfig, FlowEdge, NodeType, ResolvedNode } from './types.js';
+import type { AnchorSide, FlowCardConfig, FlowEdge, NodeType, ResolvedNode } from './types.js';
 
 const VALID_NODE_TYPES = new Set<NodeType>(['heat_pump', 'pump', 'tank', 'zone', 'valve', 'junction']);
+const VALID_ANCHOR_SIDES = new Set<AnchorSide>(['N', 'S', 'E', 'W']);
 
 @customElement('paul-flow-card')
 export class FlowCard extends LitElement {
@@ -80,6 +81,12 @@ export class FlowCard extends LitElement {
     for (const edge of config.edges) {
       if (!seenIds.has(edge.from)) throw new Error(`[paul-flow-card] Edge references unknown node: "${edge.from}".`);
       if (!seenIds.has(edge.to))   throw new Error(`[paul-flow-card] Edge references unknown node: "${edge.to}".`);
+      if (edge.anchor_start !== undefined && !VALID_ANCHOR_SIDES.has(edge.anchor_start)) {
+        throw new Error(`[paul-flow-card] Edge "${edge.from}"->"${edge.to}" has invalid anchor_start: "${edge.anchor_start}". Valid sides: N, S, E, W.`);
+      }
+      if (edge.anchor_end !== undefined && !VALID_ANCHOR_SIDES.has(edge.anchor_end)) {
+        throw new Error(`[paul-flow-card] Edge "${edge.from}"->"${edge.to}" has invalid anchor_end: "${edge.anchor_end}". Valid sides: N, S, E, W.`);
+      }
     }
     for (const field of ['cell_size', 'cell_width', 'cell_height'] as const) {
       const value = config[field];
@@ -270,7 +277,7 @@ export class FlowCard extends LitElement {
     }
   }
 
-  private _anchorPoint(node: ResolvedNode, side: 'N' | 'S' | 'E' | 'W', cellWidth: number, cellHeight: number): [number, number] {
+  private _anchorPoint(node: ResolvedNode, side: AnchorSide, cellWidth: number, cellHeight: number): [number, number] {
     const cx = (node._col + 0.5) * cellWidth;
     const cy = (node._row + 0.5) * cellHeight;
     const o  = this._anchorOffsets(node.type);
@@ -283,8 +290,8 @@ export class FlowCard extends LitElement {
   }
 
   /** Picks the N/S/E/W anchor pair facing each other, based on which axis separates the nodes more. */
-  private _anchorSides(fromNode: ResolvedNode, toNode: ResolvedNode, cellWidth: number, cellHeight: number):
-    { from: 'N' | 'S' | 'E' | 'W'; to: 'N' | 'S' | 'E' | 'W' } {
+  private _defaultSides(fromNode: ResolvedNode, toNode: ResolvedNode, cellWidth: number, cellHeight: number):
+    { from: AnchorSide; to: AnchorSide } {
     const dx = (toNode._col - fromNode._col) * cellWidth;
     const dy = (toNode._row - fromNode._row) * cellHeight;
     if (Math.abs(dx) >= Math.abs(dy)) {
@@ -293,18 +300,38 @@ export class FlowCard extends LitElement {
     return dy >= 0 ? { from: 'S', to: 'N' } : { from: 'N', to: 'S' };
   }
 
-  /** Builds an orthogonal (Manhattan-style) polyline between two anchored points. */
-  private _orthogonalPoints(
-    x1: number, y1: number, x2: number, y2: number, axis: 'horizontal' | 'vertical',
-  ): [number, number][] {
-    if (axis === 'horizontal') {
+  /** Resolves an edge's anchor sides, letting `anchor_start`/`anchor_end` override the automatic pick. */
+  private _resolveSides(edge: FlowEdge, fromNode: ResolvedNode, toNode: ResolvedNode, cellWidth: number, cellHeight: number):
+    { from: AnchorSide; to: AnchorSide } {
+    const defaults = this._defaultSides(fromNode, toNode, cellWidth, cellHeight);
+    return {
+      from: edge.anchor_start ?? defaults.from,
+      to:   edge.anchor_end   ?? defaults.to,
+    };
+  }
+
+  /**
+   * Builds an orthogonal (Manhattan-style) polyline between two anchored points. When both
+   * anchors are on the same axis (e.g. both E/W), the path bows through a midpoint on the
+   * other axis. When they're on perpendicular axes (e.g. one E/W, one N/S) — which only
+   * happens with an explicit `anchor_start`/`anchor_end` override — it's a single-corner path.
+   */
+  private _orthogonalPoints(x1: number, y1: number, x2: number, y2: number, fromSide: AnchorSide, toSide: AnchorSide): [number, number][] {
+    const fromHorizontal = fromSide === 'E' || fromSide === 'W';
+    const toHorizontal   = toSide === 'E' || toSide === 'W';
+
+    if (fromHorizontal && toHorizontal) {
       if (y1 === y2) return [[x1, y1], [x2, y2]];
       const mx = (x1 + x2) / 2;
       return [[x1, y1], [mx, y1], [mx, y2], [x2, y2]];
     }
-    if (x1 === x2) return [[x1, y1], [x2, y2]];
-    const my = (y1 + y2) / 2;
-    return [[x1, y1], [x1, my], [x2, my], [x2, y2]];
+    if (!fromHorizontal && !toHorizontal) {
+      if (x1 === x2) return [[x1, y1], [x2, y2]];
+      const my = (y1 + y2) / 2;
+      return [[x1, y1], [x1, my], [x2, my], [x2, y2]];
+    }
+    // Perpendicular anchors: a single corner, on whichever axis the start leaves along.
+    return fromHorizontal ? [[x1, y1], [x2, y1], [x2, y2]] : [[x1, y1], [x1, y2], [x2, y2]];
   }
 
   /** Renders a polyline as a path with soft (curved, not sharp) corners. */
@@ -334,12 +361,11 @@ export class FlowCard extends LitElement {
     const toNode   = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return svg``;
 
-    const { from: fromSide, to: toSide } = this._anchorSides(fromNode, toNode, cellWidth, cellHeight);
+    const { from: fromSide, to: toSide } = this._resolveSides(edge, fromNode, toNode, cellWidth, cellHeight);
     const [x1, y1] = this._anchorPoint(fromNode, fromSide, cellWidth, cellHeight);
     const [x2, y2] = this._anchorPoint(toNode, toSide, cellWidth, cellHeight);
 
-    const axis   = (fromSide === 'E' || fromSide === 'W') ? 'horizontal' : 'vertical';
-    const points = this._orthogonalPoints(x1, y1, x2, y2, axis);
+    const points = this._orthogonalPoints(x1, y1, x2, y2, fromSide, toSide);
     const d      = this._roundedPath(points, 18);
 
     const isActive = this._isEdgeActive(edge);

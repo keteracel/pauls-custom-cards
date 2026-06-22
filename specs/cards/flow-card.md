@@ -40,6 +40,8 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 | `from` / `to` | string | yes | — | Must reference existing node ids — orphan edges throw |
 | `active_entity` | string | no | — | binary_sensor that directly overrides edge active/inactive state |
 | `color` | string | no | `'#ff6600'` | Hex pipe color when active |
+| `anchor_start` | `'N' \| 'S' \| 'E' \| 'W'` | no | auto-picked | Overrides which side of the `from` node the pipe leaves from; invalid value throws |
+| `anchor_end` | `'N' \| 'S' \| 'E' \| 'W'` | no | auto-picked | Overrides which side of the `to` node the pipe enters; invalid value throws |
 
 ## Editor (`flow-card-editor.ts`)
 Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-form`. **Nodes and edges must be hand-edited in the card's YAML** — this is intentional; no UI form exists for grid layout or entity mapping.
@@ -53,7 +55,7 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
   - `zone` → valve state if defined, else `climate.state` in `heat`/`cool`/`heat_cool`, else off.
   - everything else → `entities.state` entity's state === `'on'`.
 - **Temperature display**: heat_pump shows "in→out°" if both available else whichever is present; zone shows climate `current_temperature` or its `temperature` sensor; other nodes show their `temperature` sensor if set.
-- **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node — picked automatically from relative `(col, row)` position, not configurable. Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid gray `#444`, no animation.
+- **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node, auto-picked from relative `(col, row)` position by default — override per edge with `anchor_start`/`anchor_end`. When both ends are on the same axis (e.g. both E/W) the path bows through a midpoint; when they're on perpendicular axes (only possible via an explicit override) it's a single-corner path. No automatic conflict avoidance: if two edges would naturally share the same `(node, side)` anchor and overlap, resolve it manually via `anchor_start`/`anchor_end` (see #25). Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid gray `#444`, no animation.
 - **Edge active logic**:
   - If `active_entity` set → active iff that entity's state === `'on'`.
   - Else → active iff `from` node is on AND (`to` node is on OR `to` is a junction).
@@ -65,6 +67,7 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
 - Node ids required and unique.
 - Node types must be in the valid set.
 - Every edge's `from`/`to` must reference an existing node id.
+- `anchor_start`/`anchor_end`, if set, must be one of `N`, `S`, `E`, `W`.
 - `cell_size`/`cell_width`/`cell_height`/`height` positive and finite; node `position` coordinates finite.
 
 ## Source files

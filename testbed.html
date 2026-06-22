@@ -397,7 +397,7 @@
 
   <section>
     <h2>cell_width / cell_height — fix for #21</h2>
-    <p class="subtitle">Same 5×6 grid topology as the over-tall layout reported in #21. Left: old square <code>cell_size: 120</code>. Right: independent <code>cell_width: 120</code> / <code>cell_height: 70</code> — same readability, much less vertical space.</p>
+    <p class="subtitle">Same 5×6 grid topology as the over-tall layout reported in #21. Left: old square <code>cell_size: 120</code>. Right: independent <code>cell_width: 120</code> / <code>cell_height: 70</code> — same readability, much less vertical space. The <code>Heat Pump &rarr; Heating Cyl.</code> edge uses <code>anchor_start: 'S'</code> (see #25) to avoid overlapping the <code>Heat Pump &rarr; Hot Water Cyl.</code> pipe, which would otherwise leave from the same East side.</p>
     <div class="interactive-row">
       <div class="interactive-left">
         <div class="card-label">Before — cell_size: 120</div>
@@ -579,7 +579,7 @@
     ];
     const tallEdges = [
       { from: 'hp',          to: 'hotCyl',     color: '#ff6600' },
-      { from: 'hp',          to: 'heatingCyl', color: '#ff6600' },
+      { from: 'hp',          to: 'heatingCyl', color: '#ff6600', anchor_start: 'S' },
       { from: 'hp',          to: 'coolingCyl' },
       { from: 'hotCyl',      to: 'hotPump',    color: '#ff6600' },
       { from: 'hotPump',     to: 'house',      color: '#ff6600' },
