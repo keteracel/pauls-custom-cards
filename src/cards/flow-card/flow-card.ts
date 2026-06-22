@@ -5,6 +5,9 @@ import type { FlowCardConfig, FlowEdge, NodeType, ResolvedNode } from './types.j
 
 const VALID_NODE_TYPES = new Set<NodeType>(['heat_pump', 'pump', 'tank', 'zone', 'valve', 'junction']);
 
+type AnchorSide = 'N' | 'S' | 'E' | 'W';
+interface EdgeSides { from: AnchorSide; to: AnchorSide; }
+
 @customElement('paul-flow-card')
 export class FlowCard extends LitElement {
 
@@ -270,27 +273,128 @@ export class FlowCard extends LitElement {
     }
   }
 
-  private _anchorPoint(node: ResolvedNode, side: 'N' | 'S' | 'E' | 'W', cellWidth: number, cellHeight: number): [number, number] {
+  /** How far an anchor can be nudged tangentially along its side before it'd pass a corner/vertex. */
+  private _anchorFanLimit(type: ResolvedNode['type'], side: AnchorSide): number {
+    const o = this._anchorOffsets(type);
+    const perpExtent = (side === 'N' || side === 'S') ? Math.min(o.E, o.W) : Math.min(o.N, o.S);
+    return Math.max(2, perpExtent - 2);
+  }
+
+  /** `fanOffset` nudges the anchor tangentially along its side, to separate edges sharing the same node+side. */
+  private _anchorPoint(
+    node: ResolvedNode, side: AnchorSide, cellWidth: number, cellHeight: number, fanOffset = 0,
+  ): [number, number] {
     const cx = (node._col + 0.5) * cellWidth;
     const cy = (node._row + 0.5) * cellHeight;
     const o  = this._anchorOffsets(node.type);
     switch (side) {
-      case 'N': return [cx, cy - o.N];
-      case 'S': return [cx, cy + o.S];
-      case 'E': return [cx + o.E, cy];
-      case 'W': return [cx - o.W, cy];
+      case 'N': return [cx + fanOffset, cy - o.N];
+      case 'S': return [cx + fanOffset, cy + o.S];
+      case 'E': return [cx + o.E, cy + fanOffset];
+      case 'W': return [cx - o.W, cy + fanOffset];
     }
   }
 
-  /** Picks the N/S/E/W anchor pair facing each other, based on which axis separates the nodes more. */
-  private _anchorSides(fromNode: ResolvedNode, toNode: ResolvedNode, cellWidth: number, cellHeight: number):
-    { from: 'N' | 'S' | 'E' | 'W'; to: 'N' | 'S' | 'E' | 'W' } {
+  /**
+   * For a diagonal-ish pair of nodes (both row and column differ), the "primary" axis pair is
+   * whichever of horizontal/vertical separates them more, and "alternate" is the other axis —
+   * e.g. a target to the northeast primarily suggests East/West, with North/South as the
+   * alternate. Both ends always share the same axis (never e.g. South on one end and West on
+   * the other), since that's what keeps the orthogonal path geometry consistent. Purely
+   * axis-aligned pairs (same row or same column) have no alternate: only one axis makes sense.
+   * Pairs where one axis is overwhelmingly dominant (not roughly diagonal) also get no
+   * alternate — picking the minor axis there would be a worse-looking detour, not a real choice.
+   */
+  private _candidateSides(fromNode: ResolvedNode, toNode: ResolvedNode, cellWidth: number, cellHeight: number):
+    { primary: EdgeSides; alternate: EdgeSides | null } {
+    const DIAGONAL_RATIO = 0.5;
     const dx = (toNode._col - fromNode._col) * cellWidth;
     const dy = (toNode._row - fromNode._row) * cellHeight;
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      return dx >= 0 ? { from: 'E', to: 'W' } : { from: 'W', to: 'E' };
+    const horizontal: EdgeSides = dx >= 0 ? { from: 'E', to: 'W' } : { from: 'W', to: 'E' };
+    const vertical:   EdgeSides = dy >= 0 ? { from: 'S', to: 'N' } : { from: 'N', to: 'S' };
+
+    if (dx === 0) return { primary: vertical, alternate: null };
+    if (dy === 0) return { primary: horizontal, alternate: null };
+
+    const [primary, alternate] = Math.abs(dx) >= Math.abs(dy) ? [horizontal, vertical] : [vertical, horizontal];
+    const isDiagonal = Math.min(Math.abs(dx), Math.abs(dy)) / Math.max(Math.abs(dx), Math.abs(dy)) >= DIAGONAL_RATIO;
+    return { primary, alternate: isDiagonal ? alternate : null };
+  }
+
+  /**
+   * Assigns each edge's anchor side pair, preferring the primary (axis-dominant) pair but
+   * routing via the alternate axis instead when the primary is already more heavily used at
+   * either endpoint — e.g. if a node already has an edge leaving East, a second edge to a
+   * northeasterly target leaves via North/South instead of also piling onto East. Processed in
+   * config order so the result is deterministic and doesn't depend on render timing.
+   */
+  private _computeEdgeSides(edges: FlowEdge[], cellWidth: number, cellHeight: number): EdgeSides[] {
+    const usage = new Map<string, number>();
+    const useCount = (nodeId: string, side: AnchorSide) => usage.get(`${nodeId}|${side}`) ?? 0;
+    const bump = (nodeId: string, side: AnchorSide) => usage.set(`${nodeId}|${side}`, useCount(nodeId, side) + 1);
+
+    return edges.map((edge) => {
+      const fromNode = this._nodeMap.get(edge.from);
+      const toNode   = this._nodeMap.get(edge.to);
+      if (!fromNode || !toNode) return { from: 'E', to: 'W' } satisfies EdgeSides;
+
+      const { primary, alternate } = this._candidateSides(fromNode, toNode, cellWidth, cellHeight);
+      let sides = primary;
+      if (alternate) {
+        const primaryScore   = useCount(fromNode.id, primary.from) + useCount(toNode.id, primary.to);
+        const alternateScore = useCount(fromNode.id, alternate.from) + useCount(toNode.id, alternate.to);
+        if (alternateScore < primaryScore) sides = alternate;
+      }
+
+      bump(fromNode.id, sides.from);
+      bump(toNode.id, sides.to);
+      return sides;
+    });
+  }
+
+  /**
+   * Even after `_computeEdgeSides` spreads edges across different sides where possible, some
+   * edges still legitimately share the same (node, side) anchor — e.g. two edges with no
+   * alternate side both leaving straight East. Fan those anchor points apart along the side
+   * instead of letting them stack on the exact same point. Returns one tangential offset per
+   * edge end, indexed to match `edges`.
+   */
+  private _computeFanOffsets(edges: FlowEdge[], sides: EdgeSides[]): { from: number; to: number }[] {
+    const FANOUT_STEP = 10;
+    const offsets = edges.map(() => ({ from: 0, to: 0 }));
+
+    interface FanGroup { node: ResolvedNode; side: AnchorSide; entries: { edgeIndex: number; end: 'from' | 'to' }[]; }
+    const groups = new Map<string, FanGroup>();
+
+    const addToGroup = (node: ResolvedNode, side: AnchorSide, edgeIndex: number, end: 'from' | 'to') => {
+      const key = `${node.id}|${side}`;
+      let group = groups.get(key);
+      if (!group) {
+        group = { node, side, entries: [] };
+        groups.set(key, group);
+      }
+      group.entries.push({ edgeIndex, end });
+    };
+
+    edges.forEach((edge, i) => {
+      const fromNode = this._nodeMap.get(edge.from);
+      const toNode   = this._nodeMap.get(edge.to);
+      if (!fromNode || !toNode) return;
+      addToGroup(fromNode, sides[i].from, i, 'from');
+      addToGroup(toNode, sides[i].to, i, 'to');
+    });
+
+    for (const group of groups.values()) {
+      const k = group.entries.length;
+      if (k < 2) continue;
+      const limit = this._anchorFanLimit(group.node.type, group.side);
+      const step  = Math.min(FANOUT_STEP, (2 * limit) / (k - 1));
+      group.entries.forEach((entry, j) => {
+        offsets[entry.edgeIndex][entry.end] = (j - (k - 1) / 2) * step;
+      });
     }
-    return dy >= 0 ? { from: 'S', to: 'N' } : { from: 'N', to: 'S' };
+
+    return offsets;
   }
 
   /** Builds an orthogonal (Manhattan-style) polyline between two anchored points. */
@@ -329,14 +433,16 @@ export class FlowCard extends LitElement {
     return d;
   }
 
-  private _renderEdge(edge: FlowEdge, cellWidth: number, cellHeight: number): TemplateResult {
+  private _renderEdge(
+    edge: FlowEdge, cellWidth: number, cellHeight: number, sides: EdgeSides, fanOffset: { from: number; to: number },
+  ): TemplateResult {
     const fromNode = this._nodeMap.get(edge.from);
     const toNode   = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return svg``;
 
-    const { from: fromSide, to: toSide } = this._anchorSides(fromNode, toNode, cellWidth, cellHeight);
-    const [x1, y1] = this._anchorPoint(fromNode, fromSide, cellWidth, cellHeight);
-    const [x2, y2] = this._anchorPoint(toNode, toSide, cellWidth, cellHeight);
+    const { from: fromSide, to: toSide } = sides;
+    const [x1, y1] = this._anchorPoint(fromNode, fromSide, cellWidth, cellHeight, fanOffset.from);
+    const [x2, y2] = this._anchorPoint(toNode, toSide, cellWidth, cellHeight, fanOffset.to);
 
     const axis   = (fromSide === 'E' || fromSide === 'W') ? 'horizontal' : 'vertical';
     const points = this._orthogonalPoints(x1, y1, x2, y2, axis);
@@ -364,6 +470,8 @@ export class FlowCard extends LitElement {
     const maxRow   = Math.max(...this._nodes.map(n => n._row));
     const vbW      = (maxCol + 1) * cellWidth;
     const vbH      = (maxRow + 1) * cellHeight;
+    const edgeSides  = this._computeEdgeSides(this._config.edges, cellWidth, cellHeight);
+    const fanOffsets = this._computeFanOffsets(this._config.edges, edgeSides);
 
     return html`
       <ha-card>
@@ -372,7 +480,7 @@ export class FlowCard extends LitElement {
           <svg viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet"
                xmlns="http://www.w3.org/2000/svg">
             <g class="edges">
-              ${this._config.edges.map(e => this._renderEdge(e, cellWidth, cellHeight))}
+              ${this._config.edges.map((e, i) => this._renderEdge(e, cellWidth, cellHeight, edgeSides[i], fanOffsets[i]))}
             </g>
             <g class="nodes">
               ${this._nodes.map(n => this._renderNode(n, cellWidth, cellHeight))}
