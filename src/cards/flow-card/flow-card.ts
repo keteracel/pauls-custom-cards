@@ -270,16 +270,77 @@ export class FlowCard extends LitElement {
     }
   }
 
-  private _anchorPoint(node: ResolvedNode, side: 'N' | 'S' | 'E' | 'W', cellWidth: number, cellHeight: number): [number, number] {
+  /** How far an anchor can be nudged tangentially along its side before it'd pass a corner/vertex. */
+  private _anchorFanLimit(type: ResolvedNode['type'], side: 'N' | 'S' | 'E' | 'W'): number {
+    const o = this._anchorOffsets(type);
+    const perpExtent = (side === 'N' || side === 'S') ? Math.min(o.E, o.W) : Math.min(o.N, o.S);
+    return Math.max(2, perpExtent - 2);
+  }
+
+  /** `fanOffset` nudges the anchor tangentially along its side, to separate edges sharing the same node+side. */
+  private _anchorPoint(
+    node: ResolvedNode, side: 'N' | 'S' | 'E' | 'W', cellWidth: number, cellHeight: number, fanOffset = 0,
+  ): [number, number] {
     const cx = (node._col + 0.5) * cellWidth;
     const cy = (node._row + 0.5) * cellHeight;
     const o  = this._anchorOffsets(node.type);
     switch (side) {
-      case 'N': return [cx, cy - o.N];
-      case 'S': return [cx, cy + o.S];
-      case 'E': return [cx + o.E, cy];
-      case 'W': return [cx - o.W, cy];
+      case 'N': return [cx + fanOffset, cy - o.N];
+      case 'S': return [cx + fanOffset, cy + o.S];
+      case 'E': return [cx + o.E, cy + fanOffset];
+      case 'W': return [cx - o.W, cy + fanOffset];
     }
+  }
+
+  /**
+   * When multiple edges share the same (node, side) anchor — e.g. two edges leaving a node's
+   * East side toward different targets — fan their anchor points apart along that side instead
+   * of letting them stack on the exact same point. Returns one tangential offset per edge end,
+   * indexed to match `edges`.
+   */
+  private _computeFanOffsets(
+    edges: FlowEdge[], cellWidth: number, cellHeight: number,
+  ): { from: number; to: number }[] {
+    const FANOUT_STEP = 10;
+    const offsets = edges.map(() => ({ from: 0, to: 0 }));
+
+    interface FanGroup {
+      node: ResolvedNode;
+      side: 'N' | 'S' | 'E' | 'W';
+      entries: { edgeIndex: number; end: 'from' | 'to' }[];
+    }
+    const groups = new Map<string, FanGroup>();
+
+    const addToGroup = (node: ResolvedNode, side: 'N' | 'S' | 'E' | 'W', edgeIndex: number, end: 'from' | 'to') => {
+      const key = `${node.id}|${side}`;
+      let group = groups.get(key);
+      if (!group) {
+        group = { node, side, entries: [] };
+        groups.set(key, group);
+      }
+      group.entries.push({ edgeIndex, end });
+    };
+
+    edges.forEach((edge, i) => {
+      const fromNode = this._nodeMap.get(edge.from);
+      const toNode   = this._nodeMap.get(edge.to);
+      if (!fromNode || !toNode) return;
+      const { from: fromSide, to: toSide } = this._anchorSides(fromNode, toNode, cellWidth, cellHeight);
+      addToGroup(fromNode, fromSide, i, 'from');
+      addToGroup(toNode, toSide, i, 'to');
+    });
+
+    for (const group of groups.values()) {
+      const k = group.entries.length;
+      if (k < 2) continue;
+      const limit = this._anchorFanLimit(group.node.type, group.side);
+      const step  = Math.min(FANOUT_STEP, (2 * limit) / (k - 1));
+      group.entries.forEach((entry, j) => {
+        offsets[entry.edgeIndex][entry.end] = (j - (k - 1) / 2) * step;
+      });
+    }
+
+    return offsets;
   }
 
   /** Picks the N/S/E/W anchor pair facing each other, based on which axis separates the nodes more. */
@@ -329,14 +390,16 @@ export class FlowCard extends LitElement {
     return d;
   }
 
-  private _renderEdge(edge: FlowEdge, cellWidth: number, cellHeight: number): TemplateResult {
+  private _renderEdge(
+    edge: FlowEdge, cellWidth: number, cellHeight: number, fanOffset: { from: number; to: number },
+  ): TemplateResult {
     const fromNode = this._nodeMap.get(edge.from);
     const toNode   = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return svg``;
 
     const { from: fromSide, to: toSide } = this._anchorSides(fromNode, toNode, cellWidth, cellHeight);
-    const [x1, y1] = this._anchorPoint(fromNode, fromSide, cellWidth, cellHeight);
-    const [x2, y2] = this._anchorPoint(toNode, toSide, cellWidth, cellHeight);
+    const [x1, y1] = this._anchorPoint(fromNode, fromSide, cellWidth, cellHeight, fanOffset.from);
+    const [x2, y2] = this._anchorPoint(toNode, toSide, cellWidth, cellHeight, fanOffset.to);
 
     const axis   = (fromSide === 'E' || fromSide === 'W') ? 'horizontal' : 'vertical';
     const points = this._orthogonalPoints(x1, y1, x2, y2, axis);
@@ -364,6 +427,7 @@ export class FlowCard extends LitElement {
     const maxRow   = Math.max(...this._nodes.map(n => n._row));
     const vbW      = (maxCol + 1) * cellWidth;
     const vbH      = (maxRow + 1) * cellHeight;
+    const fanOffsets = this._computeFanOffsets(this._config.edges, cellWidth, cellHeight);
 
     return html`
       <ha-card>
@@ -372,7 +436,7 @@ export class FlowCard extends LitElement {
           <svg viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet"
                xmlns="http://www.w3.org/2000/svg">
             <g class="edges">
-              ${this._config.edges.map(e => this._renderEdge(e, cellWidth, cellHeight))}
+              ${this._config.edges.map((e, i) => this._renderEdge(e, cellWidth, cellHeight, fanOffsets[i]))}
             </g>
             <g class="nodes">
               ${this._nodes.map(n => this._renderNode(n, cellWidth, cellHeight))}

@@ -53,7 +53,7 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
   - `zone` → valve state if defined, else `climate.state` in `heat`/`cool`/`heat_cool`, else off.
   - everything else → `entities.state` entity's state === `'on'`.
 - **Temperature display**: heat_pump shows "in→out°" if both available else whichever is present; zone shows climate `current_temperature` or its `temperature` sensor; other nodes show their `temperature` sensor if set.
-- **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node — picked automatically from relative `(col, row)` position, not configurable. Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid gray `#444`, no animation.
+- **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node — picked automatically from relative `(col, row)` position, not configurable. When multiple edges share the same `(node, side)` anchor, their anchor points fan out tangentially along that side so they don't overlap. Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid gray `#444`, no animation.
 - **Edge active logic**:
   - If `active_entity` set → active iff that entity's state === `'on'`.
   - Else → active iff `from` node is on AND (`to` node is on OR `to` is a junction).
