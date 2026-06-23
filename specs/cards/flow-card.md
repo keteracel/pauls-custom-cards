@@ -28,7 +28,7 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 `NodeEntities` (all optional, semantic role → entity id):
 | Field | Role |
 |---|---|
-| `state` | binary_sensor — on/off for pump/valve/heat_pump; ignored for `tank` (passive, never on/off) |
+| `state` | binary_sensor — on/off for pump/valve/heat_pump; ignored for `tank` (always rendered active) |
 | `temperature` | sensor — numeric temp display (tank/generic) |
 | `temp_in` / `temp_out` | sensor — heat pump inlet/outlet, rendered as "in→out°" |
 | `climate` | climate entity — zone target; `state` in `heat`/`cool`/`heat_cool` marks zone active |
@@ -52,7 +52,7 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
 - **Node fill**: `primary-color` if "on", else `card-background-color`.
 - **Node on/off logic**:
   - `junction` → always on (passthrough).
-  - `tank` → always off/passive — renders with the neutral style regardless of `entities.state`; tanks have no on/off concept.
+  - `tank` → always on/active — renders with the active style regardless of `entities.state`; tanks have no on/off concept and are always present, displaying their temperature.
   - `zone` → valve state if defined, else `climate.state` in `heat`/`cool`/`heat_cool`, else off.
   - everything else → `entities.state` entity's state === `'on'`.
 - **Temperature display**: heat_pump shows "in→out°" if both available else whichever is present; zone shows climate `current_temperature` or its `temperature` sensor; other nodes show their `temperature` sensor if set.

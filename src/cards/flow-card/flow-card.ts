@@ -137,8 +137,9 @@ export class FlowCard extends LitElement {
   private _isNodeOn(node: ResolvedNode): boolean {
     if (node.type === 'junction') return true;
     // Tanks are passive vessels — they have no on/off concept, so entities.state
-    // (if set) is ignored for rendering; they always render with the neutral/passive style.
-    if (node.type === 'tank') return false;
+    // (if set) is ignored for rendering; they always render in the "active" style
+    // since they're always present and displaying their temperature.
+    if (node.type === 'tank') return true;
     const e = node.entities;
     if (!e) return false;
     if (node.type === 'zone') {
