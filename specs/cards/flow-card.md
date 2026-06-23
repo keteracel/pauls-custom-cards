@@ -28,7 +28,7 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 `NodeEntities` (all optional, semantic role → entity id):
 | Field | Role |
 |---|---|
-| `state` | binary_sensor — on/off for pump/valve/heat_pump |
+| `state` | binary_sensor — on/off for pump/valve/heat_pump; ignored for `tank` (passive, never on/off) |
 | `temperature` | sensor — numeric temp display (tank/generic) |
 | `temp_in` / `temp_out` | sensor — heat pump inlet/outlet, rendered as "in→out°" |
 | `climate` | climate entity — zone target; `state` in `heat`/`cool`/`heat_cool` marks zone active |
@@ -52,14 +52,15 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
 - **Node fill**: `primary-color` if "on", else `card-background-color`.
 - **Node on/off logic**:
   - `junction` → always on (passthrough).
+  - `tank` → always off/passive — renders with the neutral style regardless of `entities.state`; tanks have no on/off concept.
   - `zone` → valve state if defined, else `climate.state` in `heat`/`cool`/`heat_cool`, else off.
   - everything else → `entities.state` entity's state === `'on'`.
 - **Temperature display**: heat_pump shows "in→out°" if both available else whichever is present; zone shows climate `current_temperature` or its `temperature` sensor; other nodes show their `temperature` sensor if set.
 - **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node, auto-picked from relative `(col, row)` position by default — override per edge with `anchor_start`/`anchor_end`. When both ends are on the same axis (e.g. both E/W) the path bows through a midpoint; when they're on perpendicular axes (only possible via an explicit override) it's a single-corner path. No automatic conflict avoidance: if two edges would naturally share the same `(node, side)` anchor and overlap, resolve it manually via `anchor_start`/`anchor_end` (see #25). Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid gray `#444`, no animation.
 - **Edge active logic**:
   - If `active_entity` set → active iff that entity's state === `'on'`.
-  - Else → active iff `from` node is on AND (`to` node is on OR `to` is a junction).
-  - Junction passthrough: a junction is only "flow-active" downstream if ≥1 of its outgoing edges leads to an on node.
+  - Else → active iff both `from` and `to` are "passable" (on, or a `tank`/`junction`, which are always passable) AND the path actually reaches an active node downstream — recursing through chains of tanks/junctions.
+  - `tank`/`junction` passthrough: pipe animation through a tank or junction depends only on it actually leading somewhere active downstream, not on any on/off state of the tank/junction itself.
 - Skips re-render if no watched entity state changed (perf).
 
 ## Validation (`setConfig()`)

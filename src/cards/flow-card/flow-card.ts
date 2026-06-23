@@ -136,6 +136,9 @@ export class FlowCard extends LitElement {
 
   private _isNodeOn(node: ResolvedNode): boolean {
     if (node.type === 'junction') return true;
+    // Tanks are passive vessels — they have no on/off concept, so entities.state
+    // (if set) is ignored for rendering; they always render with the neutral/passive style.
+    if (node.type === 'tank') return false;
     const e = node.entities;
     if (!e) return false;
     if (node.type === 'zone') {
@@ -150,21 +153,30 @@ export class FlowCard extends LitElement {
     return e.state ? this.hass.states[e.state]?.state === 'on' : false;
   }
 
-  private _isEdgeActive(edge: FlowEdge): boolean {
+  /** Tanks and junctions are passive conduits — they have no on/off state of their own. */
+  private _isPassthrough(node: ResolvedNode): boolean {
+    return node.type === 'tank' || node.type === 'junction';
+  }
+
+  private _isNodePassable(node: ResolvedNode): boolean {
+    return this._isPassthrough(node) || this._isNodeOn(node);
+  }
+
+  private _isEdgeActive(edge: FlowEdge, visited: Set<string> = new Set()): boolean {
     if (edge.active_entity) {
       return this.hass.states[edge.active_entity]?.state === 'on';
     }
     const fromNode = this._nodeMap.get(edge.from);
     const toNode = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return false;
-    if (!this._isNodeOn(fromNode)) return false;
-    if (toNode.type !== 'junction') return this._isNodeOn(toNode);
-    // Junction is passthrough — active only if at least one immediately downstream node is on
-    return this._config.edges.some(e => {
-      if (e.from !== toNode.id) return false;
-      const downstream = this._nodeMap.get(e.to);
-      return downstream ? this._isNodeOn(downstream) : false;
-    });
+    if (!this._isNodePassable(fromNode)) return false;
+    if (!this._isPassthrough(toNode)) return this._isNodeOn(toNode);
+
+    // toNode is a tank/junction — passthrough; active only if the path actually
+    // reaches an active node further downstream (recursing through chains of them).
+    if (visited.has(toNode.id)) return false; // guard against cyclic configs
+    visited.add(toNode.id);
+    return this._config.edges.some(e => e.from === toNode.id && this._isEdgeActive(e, visited));
   }
 
   private _getDisplayTemp(node: ResolvedNode): string | null {
