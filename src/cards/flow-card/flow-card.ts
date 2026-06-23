@@ -48,7 +48,7 @@ export class FlowCard extends LitElement {
         },
         {
           id: 'tank', type: 'tank', label: 'Buffer Tank', position: [2, 0],
-          entities: { state: 'binary_sensor.tank_valve', temperature: 'sensor.tank_temp' },
+          entities: { temperature: 'sensor.tank_temp' },
         },
         {
           id: 'zone', type: 'zone', label: 'Living Room', position: [3, 1],
@@ -173,11 +173,14 @@ export class FlowCard extends LitElement {
     if (!this._isNodePassable(fromNode)) return false;
     if (!this._isPassthrough(toNode)) return this._isNodeOn(toNode);
 
-    // toNode is a tank/junction — passthrough; active only if the path actually
-    // reaches an active node further downstream (recursing through chains of them).
+    // toNode is a tank/junction — passthrough; active if the path actually reaches
+    // an active node further downstream (recursing through chains of them), or if
+    // toNode is a terminus (no outgoing edges) — being fed is enough to show active.
+    const downstream = this._config.edges.filter(e => e.from === toNode.id);
+    if (downstream.length === 0) return true;
     if (visited.has(toNode.id)) return false; // guard against cyclic configs
     visited.add(toNode.id);
-    return this._config.edges.some(e => e.from === toNode.id && this._isEdgeActive(e, visited));
+    return downstream.some(e => this._isEdgeActive(e, visited));
   }
 
   private _getDisplayTemp(node: ResolvedNode): string | null {

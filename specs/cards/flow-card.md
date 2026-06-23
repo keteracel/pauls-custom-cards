@@ -59,8 +59,8 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
 - **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node, auto-picked from relative `(col, row)` position by default — override per edge with `anchor_start`/`anchor_end`. When both ends are on the same axis (e.g. both E/W) the path bows through a midpoint; when they're on perpendicular axes (only possible via an explicit override) it's a single-corner path. No automatic conflict avoidance: if two edges would naturally share the same `(node, side)` anchor and overlap, resolve it manually via `anchor_start`/`anchor_end` (see #25). Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid gray `#444`, no animation.
 - **Edge active logic**:
   - If `active_entity` set → active iff that entity's state === `'on'`.
-  - Else → active iff both `from` and `to` are "passable" (on, or a `tank`/`junction`, which are always passable) AND the path actually reaches an active node downstream — recursing through chains of tanks/junctions.
-  - `tank`/`junction` passthrough: pipe animation through a tank or junction depends only on it actually leading somewhere active downstream, not on any on/off state of the tank/junction itself.
+  - Else → active iff both `from` and `to` are "passable" (on, or a `tank`/`junction`, which are always passable) AND the path either ends at `to` (no outgoing edges — a terminus, e.g. a tank with no modeled outflow) or reaches an active node downstream — recursing through chains of tanks/junctions.
+  - `tank`/`junction` passthrough: pipe animation through a tank or junction depends on it leading somewhere active downstream, or being a dead-end (still counts as active if fed), not on any on/off state of the tank/junction itself.
 - Skips re-render if no watched entity state changed (perf).
 
 ## Validation (`setConfig()`)
