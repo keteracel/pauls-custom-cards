@@ -336,6 +336,14 @@
   <hr class="divider">
 
   <section>
+    <h2>Suffix formatting — values ≥ 1000 (#31)</h2>
+    <p class="subtitle">Power sensor with the default <code>decimals: 2</code>. Values ≥ 1000 get k/M/B/T suffixes; decimal places are always padded, even when zero.</p>
+    <div class="grid" id="suffix-grid"></div>
+  </section>
+
+  <hr class="divider">
+
+  <section>
     <h2>Interactive — drag to change value</h2>
     <div class="interactive-row">
       <div class="interactive-left">
@@ -770,6 +778,7 @@
       entity: 'sensor.temperature',
       show_name: true,
       show_unit: true,
+      decimals: 1,
       levels: LEVELS,
     };
 
@@ -820,6 +829,32 @@
       gCard.setConfig({ ...baseConfig, entity: entityId, color_mode: 'gradient', name });
       gCard.hass = hass;
       gradientGrid.appendChild(gCard);
+    });
+
+    // --- Suffix formatting grid (#31) ---
+
+    const POWER_LEVELS = [
+      { min: 0,   max: 1e3,  icon: 'mdi:flash-outline', color: '#4caf50', label: 'Low'       },
+      { min: 1e3, max: 1e6,  icon: 'mdi:flash',         color: '#ff9800', label: 'High'      },
+      { min: 1e6, max: 1e12, icon: 'mdi:flash-alert',   color: '#f44336', label: 'Very high' },
+    ];
+
+    const suffixValues = [
+      { value: 950,        name: '950 → 950.00'       },
+      { value: 1234.5,     name: '1234.5 → 1.23k'     },
+      { value: 2345678,    name: '2345678 → 2.35M'    },
+      { value: 4500000000, name: '4500000000 → 4.50B' },
+    ];
+
+    const suffixGrid = document.getElementById('suffix-grid');
+
+    suffixValues.forEach(({ value, name }, i) => {
+      const entityId = `sensor.suffix_${i}`;
+      const card = document.createElement('paul-gauge-card');
+      // decimals omitted — exercises the default of 2
+      card.setConfig({ type: 'custom:paul-gauge-card', entity: entityId, show_name: true, show_unit: true, color_mode: 'distinct', name, levels: POWER_LEVELS });
+      card.hass = makeHass(entityId, value, name, 'W');
+      suffixGrid.appendChild(card);
     });
 
     // --- Interactive cards ---
