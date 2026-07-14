@@ -54,7 +54,12 @@ export class GaugeCard extends LitElement {
         throw new Error(`Level min must be less than max (got min=${level.min}, max=${level.max}).`);
       }
     }
-    this._config = { color_mode: 'distinct', show_name: true, show_unit: true, ...config };
+    if (config.decimals !== undefined &&
+        (typeof config.decimals !== 'number' || isNaN(config.decimals) ||
+         config.decimals < 0 || !Number.isInteger(config.decimals))) {
+      throw new Error(`decimals must be a non-negative integer (got ${config.decimals}).`);
+    }
+    this._config = { color_mode: 'distinct', show_name: true, show_unit: true, decimals: 2, ...config };
     this._cachedLevels = [...this._config.levels].sort((a, b) => a.min - b.min);
   }
 
@@ -123,6 +128,35 @@ export class GaugeCard extends LitElement {
     return this._interpolateColor(level.color, nextLevel ? nextLevel.color : level.color, t);
   }
 
+  // Formats numeric values with metric suffix notation (k/M/B/T), always padding to
+  // this._config.decimals so trailing zeros are shown (e.g. "45.60k", "21.50").
+  private _formatValue(value: number): string {
+    const decimals = this._config.decimals!;
+    const sign = value < 0 ? '-' : '';
+    const abs = Math.abs(value);
+    const tiers: Array<[number, string]> = [
+      [1e12, 'T'],
+      [1e9,  'B'],
+      [1e6,  'M'],
+      [1e3,  'k'],
+    ];
+
+    const tierIndex = tiers.findIndex(([threshold]) => abs >= threshold);
+    if (tierIndex === -1) return `${sign}${abs.toFixed(decimals)}`;
+
+    let [threshold, suffix] = tiers[tierIndex];
+    let scaled = (abs / threshold).toFixed(decimals);
+
+    // toFixed can round the scaled value up into the next tier (e.g. 999999.999 -> "1000.00k").
+    // Re-check and promote to the larger tier when that happens.
+    if (parseFloat(scaled) >= 1000 && tierIndex > 0) {
+      [threshold, suffix] = tiers[tierIndex - 1];
+      scaled = (abs / threshold).toFixed(decimals);
+    }
+
+    return `${sign}${scaled}${suffix}`;
+  }
+
   protected render() {
     if (!this._config || !this.hass) return html``;
 
@@ -153,7 +187,7 @@ export class GaugeCard extends LitElement {
             <ha-icon icon="${icon}"></ha-icon>
           </div>
           <div class="gauge-value">
-            ${stateObj.state}${this._config.show_unit && unit ? html`<span class="unit">${unit}</span>` : ''}
+            ${isNumeric ? this._formatValue(rawValue) : stateObj.state}${this._config.show_unit && unit ? html`<span class="unit">${unit}</span>` : ''}
           </div>
           ${this._config.show_name ? html`<div class="gauge-name">${friendlyName}</div>` : ''}
         </div>

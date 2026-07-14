@@ -11,6 +11,7 @@ Displays a single numeric sensor value with a full-bleed background card whose c
 | `entity` | string | yes | — | Sensor entity ID |
 | `name` | string | no | entity friendly name | Override display name |
 | `unit` | string | no | entity's `unit_of_measurement` | Override unit suffix |
+| `decimals` | number | no | `2` | Decimal places shown; always padded, e.g. 21.50 |
 | `show_name` | boolean | no | `true` | Show name below value |
 | `show_unit` | boolean | no | `true` | Show unit suffix |
 | `color_mode` | `'distinct' \| 'gradient'` | no | `'distinct'` | distinct = flat color per level; gradient = interpolate between consecutive level colors based on value position |
@@ -32,6 +33,7 @@ Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, sh
 - Levels sorted ascending by `min` once at `setConfig()` and cached.
 - Value lookup: level where `value >= min && value < max`; if the value falls in a gap between levels, returns the level with the highest `max` below the value (avoids unintuitive jumps to the wrong level).
 - Color: `distinct` → level's static color. `gradient` → RGB-interpolate between current level's color and the next level's color, normalized by `(value - min) / (max - min)`.
+- Numeric values are formatted with metric suffix notation: `k`/`M`/`B`/`T` at 1e3/1e6/1e9/1e12, using the largest tier whose threshold is ≤ the absolute value. If rounding the scaled value to `decimals` places pushes it up to the next tier (e.g. 999999.999 → "1000.00k"), the value is promoted to the next larger tier and reformatted. Sign is preserved (e.g. "-45.60k"). Level matching and color computation always use the raw, unformatted value. Non-numeric states are shown raw, unformatted.
 - Missing/non-numeric entity state → shows a help icon with "Entity not found".
 - Skips re-render if the watched entity's state hasn't changed (perf).
 

@@ -13,6 +13,7 @@ export interface GaugeCardConfig {
   entity: string;
   name?: string;
   unit?: string;
+  decimals?: number;
   show_name?: boolean;
   show_unit?: boolean;
   color_mode?: ColorMode;
