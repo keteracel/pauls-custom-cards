@@ -1,5 +1,7 @@
 import { LitElement, html, svg, css, type CSSResultGroup, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
+import { navigate } from 'custom-card-helpers';
 import type { HomeAssistant } from 'custom-card-helpers';
 import type { AnchorSide, FlowCardConfig, FlowEdge, NodeType, ResolvedNode } from './types.js';
 
@@ -96,6 +98,10 @@ export class FlowCard extends LitElement {
     }
     if (config.height !== undefined && (config.height <= 0 || !Number.isFinite(config.height))) {
       throw new Error('[paul-flow-card] height must be a positive number.');
+    }
+    // Empty string/null count as unset (a cleared editor field must not break the card)
+    if (config.url != null && typeof config.url !== 'string') {
+      throw new Error('[paul-flow-card] url must be a string.');
     }
 
     this._nodes = config.nodes.map(n => {
@@ -395,8 +401,24 @@ export class FlowCard extends LitElement {
                      stroke="#444" stroke-width="2" fill="none"/>`;
   }
 
+  private _navigate(): void {
+    const url = this._config.url;
+    if (!url) return;
+    if (url.startsWith('/')) {
+      navigate(this, url);
+    } else {
+      window.location.assign(url);
+    }
+  }
+
+  private _handleCardKeydown(ev: KeyboardEvent): void {
+    if (ev.key === 'Enter') this._navigate();
+  }
+
   protected override render() {
     if (!this._config || !this.hass) return html``;
+
+    const clickable = Boolean(this._config.url);
 
     const cellWidth  = this._config.cell_width  ?? this._config.cell_size ?? 120;
     const cellHeight = this._config.cell_height ?? this._config.cell_size ?? 120;
@@ -407,7 +429,13 @@ export class FlowCard extends LitElement {
     const vbH      = (maxRow + 1) * cellHeight;
 
     return html`
-      <ha-card>
+      <ha-card
+        class=${clickable ? 'clickable' : ''}
+        role=${ifDefined(clickable ? 'button' : undefined)}
+        tabindex=${ifDefined(clickable ? '0' : undefined)}
+        @click=${clickable ? this._navigate : undefined}
+        @keydown=${clickable ? this._handleCardKeydown : undefined}
+      >
         ${this._config.title ? html`<div class="card-header">${this._config.title}</div>` : ''}
         <div class="flow-wrapper" style="aspect-ratio:${vbW} / ${vbH}; min-height:${height}px">
           <svg viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet"
@@ -432,6 +460,7 @@ export class FlowCard extends LitElement {
     return css`
       :host { display: block; }
       ha-card { display: block; overflow: hidden; }
+      ha-card.clickable { cursor: pointer; }
 
       .card-header {
         padding: 16px 16px 0;

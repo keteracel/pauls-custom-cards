@@ -6,11 +6,13 @@ import type { FlowCardConfig } from './types.js';
 
 const SCHEMA = [
   { name: 'title',  selector: { text: {} } },
+  { name: 'url',    selector: { text: {} } },
   { name: 'height', selector: { number: { mode: 'box', min: 100, max: 1000, step: 10 } } },
 ];
 
 const LABELS: Record<string, string> = {
   title:  'Card title',
+  url:    'Dashboard URL (optional — makes card clickable)',
   height: 'Card height (px)',
 };
 
