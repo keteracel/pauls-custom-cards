@@ -34,6 +34,8 @@ export interface FlowEdge {
 export interface FlowCardConfig {
   type: string;
   title?: string;
+  /** When set, clicking/tapping the card navigates here — in-app for `/`-prefixed paths, full page navigation otherwise. */
+  url?: string;
   height?: number;
   /** @deprecated Use cell_width/cell_height instead. Used as a fallback for either axis. */
   cell_size?: number;

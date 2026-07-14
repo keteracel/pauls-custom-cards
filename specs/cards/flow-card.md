@@ -9,6 +9,7 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
 | `title` | string | no | — | Card header |
+| `url` | string | no | unset | When set, the card becomes clickable and tapping/activating it navigates here; `/`-prefixed paths use in-app HA navigation (no reload), other values are treated as a full URL (`window.location.assign`) |
 | `height` | number | no | `300` | SVG container height (px); must be > 0, finite |
 | `cell_size` | number | no | `120` | **Deprecated** — fallback for either axis when `cell_width`/`cell_height` are unset; must be > 0, finite |
 | `cell_width` | number | no | `cell_size` ?? `120` | Grid column width (px) for node layout; must be > 0, finite |
@@ -44,7 +45,7 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 | `anchor_end` | `'N' \| 'S' \| 'E' \| 'W'` | no | auto-picked | Overrides which side of the `to` node the pipe enters; invalid value throws |
 
 ## Editor (`flow-card-editor.ts`)
-Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-form`. **Nodes and edges must be hand-edited in the card's YAML** — this is intentional; no UI form exists for grid layout or entity mapping.
+Only exposes `title` (text), `url` (text), and `height` (number, 100–1000px slider) via `ha-form`. **Nodes and edges must be hand-edited in the card's YAML** — this is intentional; no UI form exists for grid layout or entity mapping.
 
 ## Rendering Behavior
 - SVG viewBox sized to `(maxCol+1) × cell_width` by `(maxRow+1) × cell_height`.
@@ -63,6 +64,7 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
   - Else → active iff both `from` and `to` are "passable" (on, or a `tank`/`junction`, which are always passable) AND the path either ends at `to` (no outgoing edges — a terminus, e.g. a tank with no modeled outflow) or reaches an active node downstream — recursing through chains of tanks/junctions.
   - `tank`/`junction` passthrough: pipe animation through a tank or junction depends on it leading somewhere active downstream, or being a dead-end (still counts as active if fed), not on any on/off state of the tank/junction itself.
 - Skips re-render if no watched entity state changed (perf).
+- **Click-through**: if `url` is set, `ha-card` gets `role="button"`, `tabindex="0"`, a pointer cursor, and responds to click/tap or `Enter` keypress by navigating — in-app (`navigate()`, no reload) for `/`-prefixed paths, otherwise `window.location.assign()`. If `url` is unset (the default), the card has none of this — no click handler, no `role`/`tabindex`, no pointer cursor; it's inert, identical to pre-#36 behavior.
 
 ## Validation (`setConfig()`)
 - ≥1 node; `edges` array present (can be empty).
@@ -71,6 +73,7 @@ Only exposes `title` (text) and `height` (number, 100–1000px slider) via `ha-f
 - Every edge's `from`/`to` must reference an existing node id.
 - `anchor_start`/`anchor_end`, if set, must be one of `N`, `S`, `E`, `W`.
 - `cell_size`/`cell_width`/`cell_height`/`height` positive and finite; node `position` coordinates finite.
+- `url`, if set, must be a string; empty string and `null` are treated as unset (card not clickable) so a cleared editor field can't break the card.
 
 ## Source files
 - `src/cards/flow-card/flow-card.ts`
