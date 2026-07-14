@@ -14,6 +14,7 @@ const MAIN_SCHEMA = [
     selector: { entity: { domain: ['sensor'] } },
   },
   { name: 'name', selector: { text: {} } },
+  { name: 'decimals', selector: { number: { mode: 'box', min: 0, step: 1 } } },
   {
     name: 'color_mode',
     selector: {
@@ -40,6 +41,7 @@ const LEVEL_SCHEMA = [
 const MAIN_LABELS: Record<string, string> = {
   entity:     'Sensor entity',
   name:       'Name (override)',
+  decimals:   'Decimal places',
   color_mode: 'Color mode',
   show_name:  'Show name',
   show_unit:  'Show unit',
@@ -114,7 +116,7 @@ export class GaugeCardEditor extends LitElement {
 
         <ha-form
           .schema=${MAIN_SCHEMA}
-          .data=${{ color_mode: 'distinct', show_name: true, show_unit: true, ...this._config }}
+          .data=${{ color_mode: 'distinct', show_name: true, show_unit: true, decimals: 2, ...this._config }}
           .hass=${this.hass}
           .computeLabel=${computeMainLabel}
           @value-changed=${this._mainChanged}
