@@ -54,12 +54,13 @@ export class GaugeCard extends LitElement {
         throw new Error(`Level min must be less than max (got min=${level.min}, max=${level.max}).`);
       }
     }
-    if (config.decimals !== undefined &&
-        (typeof config.decimals !== 'number' || isNaN(config.decimals) ||
-         config.decimals < 0 || !Number.isInteger(config.decimals))) {
-      throw new Error(`decimals must be a non-negative integer (got ${config.decimals}).`);
+    // != null: the editor emits `decimals: undefined` when the field is cleared — treat as unset
+    if (config.decimals != null &&
+        (typeof config.decimals !== 'number' || !Number.isInteger(config.decimals) ||
+         config.decimals < 0 || config.decimals > 100)) {
+      throw new Error(`decimals must be an integer between 0 and 100 (got ${config.decimals}).`);
     }
-    this._config = { color_mode: 'distinct', show_name: true, show_unit: true, decimals: 2, ...config };
+    this._config = { color_mode: 'distinct', show_name: true, show_unit: true, ...config, decimals: config.decimals ?? 2 };
     this._cachedLevels = [...this._config.levels].sort((a, b) => a.min - b.min);
   }
 
@@ -170,8 +171,10 @@ export class GaugeCard extends LitElement {
       `;
     }
 
-    const rawValue = parseFloat(stateObj.state);
-    const isNumeric = !isNaN(rawValue);
+    // Number() (not parseFloat) so partially-numeric states like timestamps or "45 W"
+    // display raw instead of as a misleading scaled number; isFinite also rejects Infinity
+    const rawValue = Number(stateObj.state);
+    const isNumeric = Number.isFinite(rawValue);
 
     // Fix #6: compute level once and pass to color function — no double resolution
     const level = isNumeric ? this._getCurrentLevel(rawValue) : undefined;
