@@ -372,7 +372,7 @@ export class FlowCard extends LitElement {
     return d;
   }
 
-  private _renderEdge(edge: FlowEdge, cellWidth: number, cellHeight: number): TemplateResult {
+  private _renderEdge(edge: FlowEdge, isActive: boolean, cellWidth: number, cellHeight: number): TemplateResult {
     const fromNode = this._nodeMap.get(edge.from);
     const toNode   = this._nodeMap.get(edge.to);
     if (!fromNode || !toNode) return svg``;
@@ -384,8 +384,7 @@ export class FlowCard extends LitElement {
     const points = this._orthogonalPoints(x1, y1, x2, y2, fromSide, toSide);
     const d      = this._roundedPath(points, 18);
 
-    const isActive = this._isEdgeActive(edge);
-    const color    = edge.color ?? '#ff6600';
+    const color = edge.color ?? '#ff6600';
 
     if (isActive) {
       return svg`<path d="${d}" class="pipe pipe--active"
@@ -414,7 +413,11 @@ export class FlowCard extends LitElement {
           <svg viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet"
                xmlns="http://www.w3.org/2000/svg">
             <g class="edges">
-              ${this._config.edges.map(e => this._renderEdge(e, cellWidth, cellHeight))}
+              ${this._config.edges
+                .map(e => ({ edge: e, active: this._isEdgeActive(e) }))
+                // SVG paints in document order — inactive first so active pipes sit on top (#33)
+                .sort((a, b) => Number(a.active) - Number(b.active))
+                .map(({ edge, active }) => this._renderEdge(edge, active, cellWidth, cellHeight))}
             </g>
             <g class="nodes">
               ${this._nodes.map(n => this._renderNode(n, cellWidth, cellHeight))}
