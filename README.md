@@ -8,6 +8,10 @@ Custom Lovelace cards for Home Assistant.
 
 A full-bleed background colour card that reflects the current state of a sensor. The entire card background changes colour based on configurable value levels, each with its own icon and colour. Supports both discrete (flat colour per level) and gradient (colour interpolated from the sensor's actual value) modes.
 
+### Paul's Wind Card (`paul-wind-card`)
+
+A compass card showing wind **direction** (a rotating needle) and **speed** (in the centre), with optional secondary readouts for gust/maximum speed, average speed, and average direction (drawn as a second, dimmed needle). Direction can be driven by a degrees sensor or a cardinal string (`N`, `NNE`, …).
+
 ## Installation
 
 ### Via HACS (recommended)
@@ -97,3 +101,32 @@ levels:
 #### Preset library
 
 Don't want to hand-craft levels? See the **[gauge preset library](specs/cards/gauge-presets.md)** for ready-made, copy-paste `levels` configs covering common sensors — ambient temperature, humidity, CO₂, illuminance, solar production, battery, UV index, tank level, Wi-Fi signal, and more.
+
+### Wind Card
+
+```yaml
+type: custom:paul-wind-card
+title: Wind
+speed_entity: sensor.wind_speed
+direction_entity: sensor.wind_bearing   # degrees (0–360) or a cardinal string (N, NNE, …)
+gust_entity: sensor.wind_gust                    # optional
+average_speed_entity: sensor.wind_speed_avg      # optional
+average_direction_entity: sensor.wind_bearing_avg # optional
+```
+
+The card has a visual editor — no YAML editing needed for normal use.
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `speed_entity` | string | **required** | Numeric wind-speed sensor |
+| `direction_entity` | string | **required** | Direction in degrees (0–360) or a cardinal string (`N`, `NNE`, …) |
+| `gust_entity` | string | — | Max / gust speed — shown as a "Gust" readout |
+| `average_speed_entity` | string | — | Shown as an "Avg" readout |
+| `average_direction_entity` | string | — | Drawn as a second, dimmed needle plus an "Avg dir" readout |
+| `title` | string | — | Card header |
+| `unit` | string | speed entity's unit | Override the speed unit label |
+| `decimals` | number | `1` | Speed decimal places (0–10) |
+| `show_cardinal` | boolean | `true` | Show N/E/S/W labels on the compass |
+| `direction_from` | boolean | `true` | `true` = needle points where the wind comes **from** (meteorological); `false` = points downwind |

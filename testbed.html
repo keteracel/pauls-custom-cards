@@ -894,5 +894,102 @@
     slider.addEventListener('input', () => updateLive(slider.value));
     updateLive(slider.value);
   </script>
+
+  <hr class="divider">
+
+  <h1>Paul's Wind Card — Testbed</h1>
+  <p class="subtitle">Dummy entity states. Needle points where the wind comes from (meteorological convention).</p>
+
+  <section>
+    <h2>Static examples — degrees, cardinal string, gust + averages</h2>
+    <div class="grid" id="wind-grid"></div>
+  </section>
+
+  <hr class="divider">
+
+  <section>
+    <h2>Interactive — drag to change direction &amp; speed</h2>
+    <div class="interactive-row">
+      <div class="interactive-left">
+        <div class="slider-row">
+          <label>Direction</label>
+          <input type="range" id="wind-dir" min="0" max="359" value="45" step="1">
+          <span id="wind-dir-value">45°</span>
+        </div>
+        <div class="slider-row">
+          <label>Speed</label>
+          <input type="range" id="wind-speed" min="0" max="60" value="12" step="0.5">
+          <span id="wind-speed-value">12.0 km/h</span>
+        </div>
+        <div style="max-width:320px">
+          <paul-wind-card id="wind-live"></paul-wind-card>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script type="module">
+    await customElements.whenDefined('paul-wind-card');
+
+    const windState = (id, state, unit) => ({
+      [id]: { entity_id: id, state: String(state), attributes: unit ? { unit_of_measurement: unit } : {} },
+    });
+
+    const staticHass = {
+      states: {
+        ...windState('sensor.wind_speed', 12.4, 'km/h'),
+        ...windState('sensor.wind_gust', 28.1, 'km/h'),
+        ...windState('sensor.wind_bearing', 135, '°'),
+        ...windState('sensor.wind_bearing_avg', 160, '°'),
+        ...windState('sensor.wind_speed_avg', 9.7, 'km/h'),
+        ...windState('sensor.wind_cardinal', 'WSW'),
+        ...windState('sensor.wind_speed_mph', 18, 'mph'),
+      },
+    };
+
+    const windGrid = document.getElementById('wind-grid');
+    const windExamples = [
+      { title: 'Basic — degrees', speed_entity: 'sensor.wind_speed', direction_entity: 'sensor.wind_bearing' },
+      { title: 'Cardinal string', speed_entity: 'sensor.wind_speed_mph', direction_entity: 'sensor.wind_cardinal' },
+      { title: 'Gust + averages', speed_entity: 'sensor.wind_speed', direction_entity: 'sensor.wind_bearing',
+        gust_entity: 'sensor.wind_gust', average_speed_entity: 'sensor.wind_speed_avg',
+        average_direction_entity: 'sensor.wind_bearing_avg' },
+    ];
+    for (const ex of windExamples) {
+      const card = document.createElement('paul-wind-card');
+      card.setConfig({ type: 'custom:paul-wind-card', show_cardinal: true, direction_from: true, ...ex });
+      card.hass = staticHass;
+      windGrid.appendChild(card);
+    }
+
+    // Interactive
+    const windLive = document.getElementById('wind-live');
+    windLive.setConfig({
+      type: 'custom:paul-wind-card',
+      title: 'Wind',
+      speed_entity: 'sensor.live_wind_speed',
+      direction_entity: 'sensor.live_wind_bearing',
+      gust_entity: 'sensor.live_wind_gust',
+    });
+
+    const dirSlider = document.getElementById('wind-dir');
+    const speedSlider = document.getElementById('wind-speed');
+    function updateWind() {
+      const dir = Number(dirSlider.value);
+      const speed = Number(speedSlider.value);
+      windLive.hass = {
+        states: {
+          ...windState('sensor.live_wind_speed', speed, 'km/h'),
+          ...windState('sensor.live_wind_bearing', dir, '°'),
+          ...windState('sensor.live_wind_gust', (speed * 1.6).toFixed(1), 'km/h'),
+        },
+      };
+      document.getElementById('wind-dir-value').textContent = `${dir}°`;
+      document.getElementById('wind-speed-value').textContent = `${speed.toFixed(1)} km/h`;
+    }
+    dirSlider.addEventListener('input', updateWind);
+    speedSlider.addEventListener('input', updateWind);
+    updateWind();
+  </script>
 </body>
 </html>
