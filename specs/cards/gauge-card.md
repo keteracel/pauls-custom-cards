@@ -15,6 +15,7 @@ Displays a single numeric sensor value with a full-bleed background card whose c
 | `show_name` | boolean | no | `true` | Show name below value |
 | `show_unit` | boolean | no | `true` | Show unit suffix |
 | `color_mode` | `'distinct' \| 'gradient'` | no | `'distinct'` | distinct = flat color per level; gradient = interpolate between consecutive level colors based on value position |
+| `tap_action` | `ActionConfig` | no | `{ action: 'more-info' }` | HA-standard action config. Default opens the entity's more-info dialog (with history graph). `{ action: 'none' }` makes the card a passive, non-clickable display. Also supports `navigate`, `url`, etc. |
 | `levels` | `GaugeLevelConfig[]` | yes, ≥1 | — | See below |
 
 `GaugeLevelConfig`:
@@ -27,7 +28,7 @@ Displays a single numeric sensor value with a full-bleed background card whose c
 | `label` | string | no | Not currently rendered anywhere |
 
 ## Editor (`gauge-card-editor.ts`)
-Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, show_name/show_unit toggles, plus a per-level editor (min/max/icon/color/label with add/remove). Nothing requires hand-editing YAML for normal use — this card's editor is comprehensive, unlike Flow Card's.
+Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, show_name/show_unit toggles, a `tap_action` picker (HA `ui_action` selector, default more-info), plus a per-level editor (min/max/icon/color/label with add/remove). Nothing requires hand-editing YAML for normal use — this card's editor is comprehensive, unlike Flow Card's.
 
 ## Rendering Behavior
 - Levels sorted ascending by `min` once at `setConfig()` and cached.
@@ -35,12 +36,14 @@ Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, sh
 - Color: `distinct` → level's static color. `gradient` → RGB-interpolate between current level's color and the next level's color, normalized by `(value - min) / (max - min)`.
 - Numeric values are formatted with metric suffix notation: `k`/`M`/`B`/`T` at 1e3/1e6/1e9/1e12, using the largest tier whose threshold is ≤ the absolute value. If rounding the scaled value to `decimals` places pushes it up to the next tier (e.g. 999999.999 → "1000.00k"), the value is promoted to the next larger tier and reformatted. Sign is preserved (e.g. "-45.60k"). Level matching and color computation always use the raw, unformatted value.
 - States are parsed with `Number()` and must be finite to be formatted — partially-numeric states (timestamps, "45 W") and `Infinity` display raw and get no level color, rather than a misleading scaled number.
-- Missing/non-numeric entity state → shows a help icon with "Entity not found".
+- Missing/non-numeric entity state → shows a help icon with "Entity not found" (this error card is never clickable).
 - Skips re-render if the watched entity's state hasn't changed (perf).
+- **Tap**: unless `tap_action.action === 'none'`, the `ha-card` gets `role="button"`, `tabindex="0"`, a pointer cursor, and a focus-visible outline; click and Enter/Space (Space's default scroll prevented) call `handleAction(this, hass, config, 'tap')` from `custom-card-helpers`, which dispatches the standard HA action (more-info fires `hass-more-info` for `entity`).
 
 ## Validation (`setConfig()`)
 - `entity` required; `levels` must have ≥1 entry; every level's `min`/`max` must be finite numbers with `min < max`.
 - `decimals`, when set, must be an integer 0–100 (`toFixed`'s limit); `null`/`undefined` (e.g. a cleared editor field) falls back to the default of 2.
+- `tap_action`, when set, must be an object with a string `action`; unset falls back to `{ action: 'more-info' }`.
 - Hex color validated (3 or 6 char); invalid hex in gradient mode falls back to the level's flat color with a console warning.
 
 ## Source files
