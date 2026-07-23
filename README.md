@@ -93,3 +93,7 @@ levels:
 | `label` | string | no | Optional label (not currently displayed) |
 
 > **Tip:** Levels do not need to be contiguous. Values in a gap between levels will display using the level immediately below the gap.
+
+#### Preset library
+
+Don't want to hand-craft levels? See the **[gauge preset library](specs/cards/gauge-presets.md)** for ready-made, copy-paste `levels` configs covering common sensors — ambient temperature, humidity, CO₂, illuminance, solar production, battery, UV index, tank level, Wi-Fi signal, and more.
