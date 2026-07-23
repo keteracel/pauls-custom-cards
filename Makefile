@@ -1,7 +1,7 @@
 SSH_KEY := /home/ploy/.ssh/id_github_keteracel
 GIT     := GIT_SSH_COMMAND="ssh -i $(SSH_KEY) -o IdentitiesOnly=yes" git
 
-.PHONY: build serve typecheck release
+.PHONY: build serve typecheck verify release
 
 build: ## Build dist/pauls-cards.js
 	npm run build
@@ -11,6 +11,9 @@ serve: ## Serve testbed.html at http://localhost:8080
 
 typecheck: ## Type-check with tsc, no emit
 	npm run typecheck
+
+verify: ## Build + headless-browser render check of the testbed cards
+	npm run verify:render
 
 release: build ## Tag + push + publish a GitHub release. Usage: make release VERSION=v0.5.0 NOTES_FILE=/tmp/notes.md
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is required, e.g. make release VERSION=v0.5.0 NOTES_FILE=/tmp/notes.md"; exit 1; fi
