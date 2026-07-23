@@ -47,3 +47,6 @@ Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, sh
 - `src/cards/gauge-card/gauge-card.ts`
 - `src/cards/gauge-card/gauge-card-editor.ts`
 - `src/cards/gauge-card/types.ts`
+
+## Presets
+Copy-paste `levels` configs for common sensor types live in [`gauge-presets.md`](./gauge-presets.md) (docs-only — no shipped module or editor dropdown).
