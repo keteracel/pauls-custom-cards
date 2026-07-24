@@ -99,6 +99,26 @@ assert(third.stats.some((s) => s.label === 'Gust'), 'gust readout present');
 assert(third.stats.some((s) => s.label === 'Avg dir'), 'average direction readout present');
 assert(third.hasAvgNeedle, 'average-direction needle rendered');
 
+console.log('\nGauge card tap-action checks:');
+
+// A default gauge is clickable (tap_action defaults to more-info).
+const gauge = await page.evaluate(() => {
+  const card = document.querySelector('#distinct-grid paul-gauge-card').shadowRoot.querySelector('ha-card');
+  return { role: card.getAttribute('role'), tabindex: card.getAttribute('tabindex'), clickable: card.classList.contains('clickable') };
+});
+assert(gauge.role === 'button', 'clickable gauge exposes role=button');
+assert(gauge.tabindex === '0', 'clickable gauge is keyboard-focusable (tabindex=0)');
+assert(gauge.clickable, 'clickable gauge has .clickable class');
+
+// Tapping fires HA's hass-more-info for the entity (opens the history graph in HA).
+const moreInfoEntity = await page.evaluate(() => new Promise((resolve) => {
+  const card = document.querySelector('#distinct-grid paul-gauge-card').shadowRoot.querySelector('ha-card');
+  window.addEventListener('hass-more-info', (e) => resolve(e.detail?.entityId ?? null), { once: true });
+  card.click();
+  setTimeout(() => resolve('(no event)'), 100);
+}));
+assert(moreInfoEntity === 'sensor.static_0', `tap fires hass-more-info for the entity (got "${moreInfoEntity}")`);
+
 // Screenshots
 await page.evaluate(() => document.querySelector('#wind-grid').scrollIntoView());
 await page.locator('#wind-grid').screenshot({ path: join(OUT, 'wind-static.png') });

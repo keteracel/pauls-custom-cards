@@ -85,6 +85,7 @@ levels:
 | `unit` | string | entity unit | Override the unit of measurement |
 | `show_name` | boolean | `true` | Show the name below the value |
 | `show_unit` | boolean | `true` | Show the unit next to the value |
+| `tap_action` | [action](https://www.home-assistant.io/dashboards/actions/#tap-action) | `{ action: more-info }` | What a tap does. Defaults to opening the entity's more-info dialog (with its history graph). Set `{ action: none }` for a passive, non-clickable gauge. Also supports `navigate`, `url`, etc. |
 
 #### Level options
 
@@ -97,6 +98,18 @@ levels:
 | `label` | string | no | Optional label (not currently displayed) |
 
 > **Tip:** Levels do not need to be contiguous. Values in a gap between levels will display using the level immediately below the gap.
+
+#### Tap to see history
+
+By default, tapping the gauge opens Home Assistant's more-info dialog for the entity — which includes its history graph. Customise or disable it with `tap_action`:
+
+```yaml
+type: custom:paul-gauge-card
+entity: sensor.living_room_temperature
+tap_action:
+  action: more-info      # the default; or 'navigate' / 'url' / 'none'
+levels: [...]
+```
 
 #### Preset library
 

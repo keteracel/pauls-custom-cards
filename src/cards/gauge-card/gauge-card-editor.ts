@@ -28,6 +28,7 @@ const MAIN_SCHEMA = [
   },
   { name: 'show_name', selector: { boolean: {} } },
   { name: 'show_unit', selector: { boolean: {} } },
+  { name: 'tap_action', selector: { ui_action: { default_action: 'more-info' } } },
 ];
 
 const LEVEL_SCHEMA = [
@@ -45,6 +46,7 @@ const MAIN_LABELS: Record<string, string> = {
   color_mode: 'Color mode',
   show_name:  'Show name',
   show_unit:  'Show unit',
+  tap_action: 'Tap action',
 };
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -116,7 +118,7 @@ export class GaugeCardEditor extends LitElement {
 
         <ha-form
           .schema=${MAIN_SCHEMA}
-          .data=${{ color_mode: 'distinct', show_name: true, show_unit: true, decimals: 2, ...this._config }}
+          .data=${{ color_mode: 'distinct', show_name: true, show_unit: true, decimals: 2, tap_action: { action: 'more-info' }, ...this._config }}
           .hass=${this.hass}
           .computeLabel=${computeMainLabel}
           @value-changed=${this._mainChanged}

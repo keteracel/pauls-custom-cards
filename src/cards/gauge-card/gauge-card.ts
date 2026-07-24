@@ -1,6 +1,8 @@
 import { LitElement, html, css, type CSSResultGroup, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
+import { handleAction } from 'custom-card-helpers';
 import type { HomeAssistant } from 'custom-card-helpers';
 import type { GaugeCardConfig, GaugeLevelConfig } from './types.js';
 
@@ -60,7 +62,17 @@ export class GaugeCard extends LitElement {
          config.decimals < 0 || config.decimals > 100)) {
       throw new Error(`decimals must be an integer between 0 and 100 (got ${config.decimals}).`);
     }
-    this._config = { color_mode: 'distinct', show_name: true, show_unit: true, ...config, decimals: config.decimals ?? 2 };
+    if (config.tap_action != null &&
+        (typeof config.tap_action !== 'object' || typeof config.tap_action.action !== 'string')) {
+      throw new Error('tap_action must be an action object, e.g. { action: "more-info" }.');
+    }
+    // Default to more-info so a tap opens the entity's history graph with zero config.
+    this._config = {
+      color_mode: 'distinct', show_name: true, show_unit: true,
+      ...config,
+      decimals: config.decimals ?? 2,
+      tap_action: config.tap_action ?? { action: 'more-info' },
+    };
     this._cachedLevels = [...this._config.levels].sort((a, b) => a.min - b.min);
   }
 
@@ -158,6 +170,18 @@ export class GaugeCard extends LitElement {
     return `${sign}${scaled}${suffix}`;
   }
 
+  private _onTap(): void {
+    handleAction(this, this.hass, this._config, 'tap');
+  }
+
+  // Enter and Space activate the card like a button (Space also scrolls, so prevent that)
+  private _onKeydown(ev: KeyboardEvent): void {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      this._onTap();
+    }
+  }
+
   protected render() {
     if (!this._config || !this.hass) return html``;
 
@@ -183,8 +207,17 @@ export class GaugeCard extends LitElement {
     const friendlyName = this._config.name ?? stateObj.attributes.friendly_name ?? this._config.entity;
     const unit = this._config.unit ?? (stateObj.attributes.unit_of_measurement as string | undefined) ?? '';
 
+    const clickable = this._config.tap_action?.action !== 'none';
+
     return html`
-      <ha-card style=${styleMap(bgColor != null ? { backgroundColor: bgColor } : {})}>
+      <ha-card
+        class=${clickable ? 'clickable' : ''}
+        role=${ifDefined(clickable ? 'button' : undefined)}
+        tabindex=${ifDefined(clickable ? '0' : undefined)}
+        @click=${clickable ? this._onTap : undefined}
+        @keydown=${clickable ? this._onKeydown : undefined}
+        style=${styleMap(bgColor != null ? { backgroundColor: bgColor } : {})}
+      >
         <div class="gauge-container">
           <div class="gauge-icon">
             <ha-icon icon="${icon}"></ha-icon>
@@ -208,6 +241,13 @@ export class GaugeCard extends LitElement {
         background-color: var(--card-background-color, #fff);
         transition: background-color 0.5s ease;
         overflow: hidden;
+      }
+      ha-card.clickable {
+        cursor: pointer;
+      }
+      ha-card.clickable:focus-visible {
+        outline: 2px solid var(--primary-color, #03a9f4);
+        outline-offset: 2px;
       }
       .gauge-container {
         display: flex;
