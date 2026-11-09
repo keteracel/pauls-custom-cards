@@ -14,37 +14,9 @@ A compass card showing wind **direction** (a rotating needle) and **speed** (in 
 
 ## Installation
 
-### Via HACS (recommended)
+Install from Home Assistant's built-in [Marketplace](https://www.home-assistant.io/integrations/marketplace/) (Home Assistant 2026.11 or later). Go to **Settings → Marketplace → Add from link**, enter `keteracel/pauls-custom-cards` (type **Dashboard**), install **Paul's Custom Cards**, and hard-reload your browser. Updates then appear under **Settings → Updates**.
 
-1. Open HACS in your Home Assistant sidebar.
-2. Go to **Frontend**.
-3. Click the three-dot menu (⋮) in the top right and choose **Custom repositories**.
-4. Add `https://github.com/keteracel/pauls-custom-cards` with category **Dashboard**.
-5. Close the dialog, then search for **Paul's Custom Cards** and click **Download**.
-6. Reload your browser.
-
-### Manual
-
-1. Download `pauls-cards.js` from the [latest release](https://github.com/keteracel/pauls-custom-cards/releases/latest).
-2. Copy it to `config/www/pauls-cards.js` in your Home Assistant installation.
-3. Go to **Settings → Dashboards → Resources** and add `/local/pauls-cards.js` as a **JavaScript module**.
-4. Reload your browser.
-
-## Updating
-
-### Via HACS
-
-1. Open HACS in your Home Assistant sidebar.
-2. Go to **Frontend**.
-3. Find **Paul's Custom Cards** in the list — if an update is available it will be highlighted.
-4. Click on it and then click **Download** (HACS will fetch the new version).
-5. Reload your browser.
-
-### Manual
-
-1. Download the new `pauls-cards.js` from the [latest release](https://github.com/keteracel/pauls-custom-cards/releases/latest).
-2. Overwrite your existing `config/www/pauls-cards.js` with the new file.
-3. Hard-reload your browser (Ctrl+Shift+R / Cmd+Shift+R) to clear the cached script.
+For manual installs, updating, rolling back, troubleshooting and removal, see the **[Installation and update guide](INSTALL.md)**.
 
 ## Usage
 
