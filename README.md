@@ -66,7 +66,7 @@ levels:
 | `min` | number | yes | Lower bound of this level (inclusive) |
 | `max` | number | yes | Upper bound of this level (exclusive) |
 | `icon` | string | yes | MDI icon name, e.g. `mdi:thermometer-high` |
-| `color` | string | yes | CSS colour. Must be a hex value (`#RGB` or `#RRGGBB`) when using `gradient` mode |
+| `color` | string | yes | CSS colour. Theme colours work too, e.g. `var(--success-color, #4caf50)`, so the gauge follows your Home Assistant theme. In `gradient` mode use hex, `rgb()`, or a theme variable that resolves to one of those |
 | `label` | string | no | Optional label (not currently displayed) |
 
 > **Tip:** Levels do not need to be contiguous. Values in a gap between levels will display using the level immediately below the gap.
