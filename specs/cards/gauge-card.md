@@ -12,6 +12,7 @@ Displays a single numeric sensor value with a full-bleed background card whose c
 | `name` | string | no | entity friendly name | Override display name |
 | `unit` | string | no | entity's `unit_of_measurement` | Override unit suffix |
 | `decimals` | number | no | `2` | Decimal places shown; always padded, e.g. 21.50 |
+| `invert` | boolean | no | `false` | Flip the value's sign (-1 → 1, 1 → -1). Applied before display, level matching and gradient colour, so `levels` are written for the inverted value. `-0` shows as `0`. |
 | `show_name` | boolean | no | `true` | Show name below value |
 | `show_unit` | boolean | no | `true` | Show unit suffix |
 | `color_mode` | `'distinct' \| 'gradient'` | no | `'distinct'` | distinct = flat color per level; gradient = interpolate between consecutive level colors based on value position |

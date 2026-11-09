@@ -69,6 +69,9 @@ export class GaugeCard extends LitElement {
          config.decimals < 0 || config.decimals > 100)) {
       throw new Error(`decimals must be an integer between 0 and 100 (got ${config.decimals}).`);
     }
+    if (config.invert != null && typeof config.invert !== 'boolean') {
+      throw new Error(`invert must be true or false (got ${config.invert}).`);
+    }
     if (config.tap_action != null &&
         (typeof config.tap_action !== 'object' || typeof config.tap_action.action !== 'string')) {
       throw new Error('tap_action must be an action object, e.g. { action: "more-info" }.');
@@ -221,8 +224,11 @@ export class GaugeCard extends LitElement {
 
     // Number() (not parseFloat) so partially-numeric states like timestamps or "45 W"
     // display raw instead of as a misleading scaled number; isFinite also rejects Infinity
-    const rawValue = Number(stateObj.state);
-    const isNumeric = Number.isFinite(rawValue);
+    const stateValue = Number(stateObj.state);
+    const isNumeric = Number.isFinite(stateValue);
+    // invert flips the sign before everything else, so levels match the shown value.
+    // `|| 0` turns -0 into 0.
+    const rawValue = this._config.invert ? -stateValue || 0 : stateValue;
 
     // Fix #6: compute level once and pass to color function — no double resolution
     const level = isNumeric ? this._getCurrentLevel(rawValue) : undefined;

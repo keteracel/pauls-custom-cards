@@ -19,6 +19,8 @@ export interface GaugeCardConfig {
   name?: string;
   unit?: string;
   decimals?: number;
+  /** Flip the sign of the value (-1 → 1, 1 → -1) before display, level matching and colour. */
+  invert?: boolean;
   show_name?: boolean;
   show_unit?: boolean;
   color_mode?: ColorMode;
