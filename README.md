@@ -67,6 +67,7 @@ levels:
 | `color_mode` | `distinct` \| `gradient` | `distinct` | `distinct` shows a flat colour per level; `gradient` interpolates between level colours based on the exact sensor value |
 | `name` | string | entity friendly name | Override the display name |
 | `unit` | string | entity unit | Override the unit of measurement |
+| `invert` | boolean | `false` | Flip the value's sign, e.g. `-1` → `1` and `1` → `-1`. Useful for sensors where negative means export or discharge. Levels and colours use the inverted value |
 | `show_name` | boolean | `true` | Show the name below the value |
 | `show_unit` | boolean | `true` | Show the unit next to the value |
 | `tap_action` | [action](https://www.home-assistant.io/dashboards/actions/#tap-action) | `{ action: more-info }` | What a tap does. Defaults to opening the entity's more-info dialog (with its history graph). Set `{ action: none }` for a passive, non-clickable gauge. Also supports `navigate`, `url`, etc. |

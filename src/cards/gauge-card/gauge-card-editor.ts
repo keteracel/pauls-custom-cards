@@ -15,6 +15,7 @@ const MAIN_SCHEMA = [
   },
   { name: 'name', selector: { text: {} } },
   { name: 'decimals', selector: { number: { mode: 'box', min: 0, step: 1 } } },
+  { name: 'invert', selector: { boolean: {} } },
   {
     name: 'color_mode',
     selector: {
@@ -43,6 +44,7 @@ const MAIN_LABELS: Record<string, string> = {
   entity:     'Sensor entity',
   name:       'Name (override)',
   decimals:   'Decimal places',
+  invert:     'Invert value (-1 → 1, 1 → -1)',
   color_mode: 'Color mode',
   show_name:  'Show name',
   show_unit:  'Show unit',

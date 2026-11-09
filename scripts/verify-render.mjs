@@ -119,6 +119,45 @@ const moreInfoEntity = await page.evaluate(() => new Promise((resolve) => {
 }));
 assert(moreInfoEntity === 'sensor.static_0', `tap fires hass-more-info for the entity (got "${moreInfoEntity}")`);
 
+console.log('\nGauge card invert checks:');
+
+// invert flips the sign for display, level matching and colour.
+const invertResults = await page.evaluate(async () => {
+  const out = {};
+  for (const [state, invert] of [['-1', true], ['1', true], ['0', true], ['-1', false]]) {
+    const el = document.createElement('paul-gauge-card');
+    el.setConfig({
+      type: 'custom:paul-gauge-card', entity: 'sensor.inv', invert, decimals: 0,
+      levels: [
+        { min: -10, max: 0, icon: 'mdi:arrow-down', color: '#ff0000' },
+        { min: 0, max: 10, icon: 'mdi:arrow-up', color: '#00ff00' },
+      ],
+    });
+    el.hass = { states: { 'sensor.inv': { entity_id: 'sensor.inv', state, attributes: {} } } };
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const sr = el.shadowRoot;
+    out[`${state}/${invert}`] = {
+      value: sr.querySelector('.gauge-value').textContent.trim(),
+      bg: sr.querySelector('ha-card').style.backgroundColor,
+    };
+    el.remove();
+  }
+  let error = null;
+  try {
+    document.createElement('paul-gauge-card').setConfig({ type: 'x', entity: 'sensor.inv', invert: 'yes', levels: [{ min: 0, max: 1, icon: 'mdi:a', color: '#000' }] });
+  } catch (e) { error = e.message; }
+  return { out, error };
+});
+const inv = invertResults.out;
+assert(inv['-1/true'].value === '1', `invert: -1 shows as 1 (got "${inv['-1/true'].value}")`);
+assert(inv['-1/true'].bg === 'rgb(0, 255, 0)', `invert: -1 matches the 0–10 level (got ${inv['-1/true'].bg})`);
+assert(inv['1/true'].value === '-1', `invert: 1 shows as -1 (got "${inv['1/true'].value}")`);
+assert(inv['1/true'].bg === 'rgb(255, 0, 0)', `invert: 1 matches the -10–0 level (got ${inv['1/true'].bg})`);
+assert(inv['0/true'].value === '0', `invert: 0 shows as 0, not -0 (got "${inv['0/true'].value}")`);
+assert(inv['-1/false'].value === '-1', `no invert: -1 shows as -1 (got "${inv['-1/false'].value}")`);
+assert(/invert must be true or false/.test(invertResults.error ?? ''), `non-boolean invert is rejected (got "${invertResults.error}")`);
+
 console.log('\nTheme-variable color checks:');
 
 // Gradient mode mixes var(--…) colors using the current theme values.
