@@ -40,7 +40,7 @@ Visualizes a heating/cooling system as a pipe-network diagram: nodes (heat pump,
 |---|---|---|---|---|
 | `from` / `to` | string | yes | — | Must reference existing node ids — orphan edges throw |
 | `active_entity` | string | no | — | binary_sensor that directly overrides edge active/inactive state |
-| `color` | string | no | `'#ff6600'` | Hex pipe color when active |
+| `color` | string | no | `var(--accent-color, #ff6600)` | Pipe color when active (any CSS color, including theme vars) |
 | `anchor_start` | `'N' \| 'S' \| 'E' \| 'W'` | no | auto-picked | Overrides which side of the `from` node the pipe leaves from; invalid value throws |
 | `anchor_end` | `'N' \| 'S' \| 'E' \| 'W'` | no | auto-picked | Overrides which side of the `to` node the pipe enters; invalid value throws |
 
@@ -50,14 +50,14 @@ Only exposes `title` (text), `url` (text), and `height` (number, 100–1000px sl
 ## Rendering Behavior
 - SVG viewBox sized to `(maxCol+1) × cell_width` by `(maxRow+1) × cell_height`.
 - **Node shapes**: heat_pump = rounded rect, tank = tall rect, pump = circle, valve = diamond, zone = pentagon, junction = tiny dot.
-- **Node fill**: `primary-color` if "on", else `card-background-color`.
+- **Node fill**: `primary-color` if "on", else `card-background-color`. Off-node outline and junction dots use `secondary-text-color` (fallback `#666`). All node and pipe colors come from the HA theme.
 - **Node on/off logic**:
   - `junction` → always on (passthrough).
   - `tank` → always on/active — renders with the active style regardless of `entities.state`; tanks have no on/off concept and are always present, displaying their temperature.
   - `zone` → valve state if defined, else `climate.state` in `heat`/`cool`/`heat_cool`, else off.
   - everything else → `entities.state` entity's state === `'on'`.
 - **Temperature display**: heat_pump shows "in→out°" if both available else whichever is present; zone shows climate `current_temperature` or its `temperature` sensor; other nodes show their `temperature` sensor if set.
-- **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node, auto-picked from relative `(col, row)` position by default — override per edge with `anchor_start`/`anchor_end`. When both ends are on the same axis (e.g. both E/W) the path bows through a midpoint; when they're on perpendicular axes (only possible via an explicit override) it's a single-corner path. No automatic conflict avoidance: if two edges would naturally share the same `(node, side)` anchor and overlap, resolve it manually via `anchor_start`/`anchor_end` (see #25). Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid gray `#444`, no animation.
+- **Edges**: orthogonal (Manhattan-style) path with soft curved corners, not full right angles. Each end anchors to whichever side (N/S/E/W) of the node faces the other node, auto-picked from relative `(col, row)` position by default — override per edge with `anchor_start`/`anchor_end`. When both ends are on the same axis (e.g. both E/W) the path bows through a midpoint; when they're on perpendicular axes (only possible via an explicit override) it's a single-corner path. No automatic conflict avoidance: if two edges would naturally share the same `(node, side)` anchor and overlap, resolve it manually via `anchor_start`/`anchor_end` (see #25). Active = dashed (12px/8px), animated 0.8s CSS keyframe loop, colored per `edge.color`. Inactive = solid `disabled-text-color` (fallback `#444`), no animation.
 - **Edge z-order**: inactive edges render first, active edges last (stable-sorted, preserving config order within each group), so active pipes always paint on top where they cross inactive ones (#33). Nodes render above all edges.
 - **Edge active logic**:
   - If `active_entity` set → active iff that entity's state === `'on'`.

@@ -53,7 +53,7 @@ const LEVEL_LABELS: Record<string, string> = {
   min:   'Minimum value (inclusive)',
   max:   'Maximum value (exclusive)',
   icon:  'Icon',
-  color: 'Color (hex: #RGB or #RRGGBB)',
+  color: 'Color (#RRGGBB or theme var, e.g. var(--success-color))',
   label: 'Label (optional)',
 };
 

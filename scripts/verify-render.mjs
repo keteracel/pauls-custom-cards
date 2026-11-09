@@ -119,6 +119,50 @@ const moreInfoEntity = await page.evaluate(() => new Promise((resolve) => {
 }));
 assert(moreInfoEntity === 'sensor.static_0', `tap fires hass-more-info for the entity (got "${moreInfoEntity}")`);
 
+console.log('\nTheme-variable color checks:');
+
+// Gradient mode mixes var(--…) colors using the current theme values.
+const gradientMix = await page.evaluate(async () => {
+  document.documentElement.style.setProperty('--vt-low', '#000000');
+  document.documentElement.style.setProperty('--vt-high', 'rgb(200, 100, 0)');
+  const el = document.createElement('paul-gauge-card');
+  el.setConfig({
+    type: 'custom:paul-gauge-card', entity: 'sensor.vt', color_mode: 'gradient',
+    levels: [
+      { min: 0, max: 10, icon: 'mdi:circle', color: 'var(--vt-low)' },
+      { min: 10, max: 20, icon: 'mdi:circle', color: 'var(--vt-missing, var(--vt-high))' },
+    ],
+  });
+  el.hass = { states: { 'sensor.vt': { entity_id: 'sensor.vt', state: '5', attributes: {} } } };
+  document.body.appendChild(el);
+  await el.updateComplete;
+  const bg = el.shadowRoot.querySelector('ha-card').style.backgroundColor;
+  el.remove();
+  return bg;
+});
+assert(gradientMix === 'rgb(100, 50, 0)', `gradient resolves theme vars (got "${gradientMix}")`);
+
+// The testbed theme switch recolors flow-card pipes and nodes via theme vars.
+await page.selectOption('#theme-switch', 'ecovolt-light');
+await page.waitForTimeout(100);
+const flowColors = await page.evaluate(() => {
+  const sr = document.getElementById('flow-full').shadowRoot;
+  const inactive = sr.querySelector('.pipe--inactive');
+  const activeNode = sr.querySelector('rect[fill^="var(--primary-color"]');
+  return {
+    inactive: inactive ? getComputedStyle(inactive).stroke : null,
+    node: activeNode ? getComputedStyle(activeNode).fill : null,
+  };
+});
+assert(flowColors.inactive === 'rgb(189, 189, 189)', `inactive pipe uses --disabled-text-color (got "${flowColors.inactive}")`);
+assert(flowColors.node === 'rgb(0, 159, 23)', `active node uses --primary-color (got "${flowColors.node}")`);
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.screenshot({ path: join(OUT, 'theme-ecovolt-light.png') });
+await page.selectOption('#theme-switch', 'ecovolt-dark');
+await page.waitForTimeout(100);
+await page.screenshot({ path: join(OUT, 'theme-ecovolt-dark.png') });
+await page.selectOption('#theme-switch', 'default');
+
 // Screenshots
 await page.evaluate(() => document.querySelector('#wind-grid').scrollIntoView());
 await page.locator('#wind-grid').screenshot({ path: join(OUT, 'wind-static.png') });

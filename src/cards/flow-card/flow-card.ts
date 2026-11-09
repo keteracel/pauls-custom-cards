@@ -230,7 +230,7 @@ export class FlowCard extends LitElement {
 
   private _renderShape(node: ResolvedNode, cx: number, cy: number, isOn: boolean): TemplateResult {
     const fill   = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--card-background-color, #1c1c1e)';
-    const stroke = isOn ? 'var(--primary-color, #03a9f4)' : '#666';
+    const stroke = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--secondary-text-color, #666)';
 
     switch (node.type) {
       case 'heat_pump':
@@ -252,7 +252,7 @@ export class FlowCard extends LitElement {
                      fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
       case 'junction':
         return svg`<circle cx="${cx}" cy="${cy}" r="6"
-                            fill="#666" stroke="#666" stroke-width="1"/>`;
+                            fill="var(--secondary-text-color, #666)" stroke="var(--secondary-text-color, #666)" stroke-width="1"/>`;
       default:
         return svg``;
     }
@@ -390,7 +390,7 @@ export class FlowCard extends LitElement {
     const points = this._orthogonalPoints(x1, y1, x2, y2, fromSide, toSide);
     const d      = this._roundedPath(points, 18);
 
-    const color = edge.color ?? '#ff6600';
+    const color = edge.color ?? 'var(--accent-color, #ff6600)';
 
     if (isActive) {
       return svg`<path d="${d}" class="pipe pipe--active"
@@ -398,7 +398,7 @@ export class FlowCard extends LitElement {
                        stroke-dasharray="12 8"/>`;
     }
     return svg`<path d="${d}" class="pipe pipe--inactive"
-                     stroke="#444" stroke-width="2" fill="none"/>`;
+                     stroke="var(--disabled-text-color, #444)" stroke-width="2" fill="none"/>`;
   }
 
   private _navigate(): void {
