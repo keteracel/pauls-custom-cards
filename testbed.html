@@ -114,7 +114,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #111113;
+      background: var(--primary-background-color, #111113);
       color: var(--primary-text-color);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       padding: 32px 24px;
@@ -125,7 +125,21 @@
       font-size: 1.4rem;
       font-weight: 600;
       margin-bottom: 8px;
-      color: #fff;
+      color: var(--testbed-heading-color, #fff);
+    }
+
+    .theme-bar {
+      position: fixed;
+      top: 12px;
+      right: 16px;
+      z-index: 10;
+      font-size: 0.85rem;
+      color: var(--secondary-text-color);
+    }
+    .theme-bar select {
+      margin-left: 6px;
+      padding: 4px 8px;
+      font: inherit;
     }
 
     .subtitle {
@@ -193,7 +207,7 @@
       font-weight: 600;
       min-width: 52px;
       text-align: right;
-      color: #fff;
+      color: var(--testbed-heading-color, #fff);
     }
 
     /* Legend */
@@ -310,6 +324,66 @@
 </head>
 
 <body>
+  <div class="theme-bar">
+    <label>Theme
+      <select id="theme-switch">
+        <option value="default">Default (testbed dark)</option>
+        <option value="ecovolt-light">EcoVolt light</option>
+        <option value="ecovolt-dark">EcoVolt dark</option>
+      </select>
+    </label>
+  </div>
+  <script>
+    // Theme preview: sets the same CSS variables an HA theme would, so you can check
+    // the cards follow the theme. EcoVolt values are copied from the ecovolt-ha-theme
+    // repo (themes/ecovolt.yaml); keep them in sync if the theme changes.
+    const ECOVOLT_SHARED = {
+      '--primary-color': '#009f17',
+      '--accent-color': '#ffbb00',
+      '--info-color': '#039be5',
+      '--success-color': '#009f17',
+      '--warning-color': '#ffbb00',
+      '--error-color': '#db4437',
+      '--font-family': 'Montserrat, Roboto, sans-serif',
+    };
+    const TESTBED_THEMES = {
+      default: {},
+      'ecovolt-light': {
+        ...ECOVOLT_SHARED,
+        '--primary-background-color': '#f4f5f7',
+        '--card-background-color': '#ffffff',
+        '--primary-text-color': '#444555',
+        '--secondary-text-color': '#676879',
+        '--disabled-text-color': '#bdbdbd',
+        '--divider-color': 'rgba(36, 27, 102, 0.10)',
+        '--testbed-heading-color': '#241b66',
+      },
+      'ecovolt-dark': {
+        ...ECOVOLT_SHARED,
+        '--primary-background-color': '#111224',
+        '--card-background-color': '#181a33',
+        '--primary-text-color': '#e6e7f0',
+        '--secondary-text-color': '#a3a5c0',
+        '--disabled-text-color': '#6f6f6f',
+        '--divider-color': 'rgba(227, 228, 240, 0.12)',
+        '--testbed-heading-color': '#ffffff',
+      },
+    };
+    let appliedThemeKeys = [];
+    window.applyTestbedTheme = (name) => {
+      const root = document.documentElement;
+      appliedThemeKeys.forEach((k) => root.style.removeProperty(k));
+      const vars = TESTBED_THEMES[name] ?? {};
+      Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
+      appliedThemeKeys = Object.keys(vars);
+      document.body.style.fontFamily = vars['--font-family'] ?? '';
+      // Cards only re-render on hass/config changes; nudge them so gradient colors re-resolve.
+      document.querySelectorAll('paul-gauge-card, paul-flow-card, paul-wind-card')
+        .forEach((c) => c.requestUpdate?.());
+    };
+    document.getElementById('theme-switch')
+      .addEventListener('change', (e) => window.applyTestbedTheme(e.target.value));
+  </script>
   <h1>Paul's Gauge Card — Testbed</h1>
   <p class="subtitle">Dummy sensor data. Temperature sensor: 0–50 °C with four levels.</p>
 

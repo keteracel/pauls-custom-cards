@@ -36,9 +36,9 @@ export class GaugeCard extends LitElement {
       show_name: true,
       show_unit: true,
       levels: [
-        { min: 0,  max: 20, icon: 'mdi:thermometer-low',  color: '#2196f3', label: 'Low'    },
-        { min: 20, max: 30, icon: 'mdi:thermometer',       color: '#4caf50', label: 'Medium' },
-        { min: 30, max: 50, icon: 'mdi:thermometer-high',  color: '#f44336', label: 'High'   },
+        { min: 0,  max: 20, icon: 'mdi:thermometer-low',  color: 'var(--info-color, #2196f3)',    label: 'Low'    },
+        { min: 20, max: 30, icon: 'mdi:thermometer',       color: 'var(--success-color, #4caf50)', label: 'Medium' },
+        { min: 30, max: 50, icon: 'mdi:thermometer-high',  color: 'var(--error-color, #f44336)',   label: 'High'   },
       ],
     };
   }
@@ -81,7 +81,11 @@ export class GaugeCard extends LitElement {
     if (changedProperties.has('hass') && !changedProperties.has('_config')) {
       if (!this._config) return false;
       const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
-      return !oldHass || oldHass.states[this._config.entity] !== this.hass.states[this._config.entity];
+      return !oldHass ||
+        oldHass.states[this._config.entity] !== this.hass.states[this._config.entity] ||
+        // theme switch (incl. light/dark): var(--…) gradient colors need re-resolving
+        oldHass.themes !== this.hass.themes ||
+        oldHass.selectedTheme !== this.hass.selectedTheme;
     }
     return true;
   }
@@ -100,27 +104,40 @@ export class GaugeCard extends LitElement {
     return sorted[0];
   }
 
-  private _hexToRgb(hex: string): [number, number, number] | null {
-    const clean = hex.replace('#', '');
-    if (clean.length !== 6 && clean.length !== 3) return null;
-    const full = clean.length === 3
-      ? clean.split('').map(c => c + c).join('')
-      : clean;
-    return [
-      parseInt(full.slice(0, 2), 16),
-      parseInt(full.slice(2, 4), 16),
-      parseInt(full.slice(4, 6), 16),
-    ];
+  // Turns `var(--name, fallback)` into the theme's current value, so levels can use
+  // theme colors like `var(--success-color, #4caf50)`. Other values pass through unchanged.
+  private _resolveColor(color: string, depth = 0): string {
+    const m = color.trim().match(/^var\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)$/);
+    if (!m || depth > 5) return color.trim();
+    const value = getComputedStyle(this).getPropertyValue(m[1]).trim();
+    if (value) return this._resolveColor(value, depth + 1);
+    return m[2] ? this._resolveColor(m[2], depth + 1) : '';
+  }
+
+  // Accepts #RGB, #RRGGBB, rgb()/rgba() and var(--...) that resolves to one of those.
+  private _parseColor(color: string): [number, number, number] | null {
+    const resolved = this._resolveColor(color);
+    const hex = resolved.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hex) {
+      const full = hex[1].length === 3 ? hex[1].split('').map(c => c + c).join('') : hex[1];
+      return [
+        parseInt(full.slice(0, 2), 16),
+        parseInt(full.slice(2, 4), 16),
+        parseInt(full.slice(4, 6), 16),
+      ];
+    }
+    const rgb = resolved.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i);
+    return rgb ? [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])] : null;
   }
 
   // Fix #8: warn when a color can't be interpolated instead of silently degrading
   private _interpolateColor(colorA: string, colorB: string, t: number): string {
-    const a = this._hexToRgb(colorA);
-    const b = this._hexToRgb(colorB);
+    const a = this._parseColor(colorA);
+    const b = this._parseColor(colorB);
     if (!a || !b) {
       console.warn(
-        `[paul-gauge-card] Gradient mode requires hex colors (#RGB or #RRGGBB). ` +
-        `Got: '${!a ? colorA : colorB}'. Falling back to flat color.`
+        `[paul-gauge-card] Gradient mode needs colors it can mix: #RGB, #RRGGBB, rgb(), ` +
+        `or var(--theme-color). Got: '${!a ? colorA : colorB}'. Falling back to flat color.`
       );
       return colorA;
     }
