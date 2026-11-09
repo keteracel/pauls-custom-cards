@@ -2,6 +2,7 @@ import { LitElement, html, svg, css, type CSSResultGroup, type PropertyValues, t
 import { customElement, property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import type { WindCardConfig } from './types.js';
+import type { GridOptions } from '../../grid-options.js';
 
 // 16-point compass, each step 22.5°. Index * 22.5 = bearing in degrees.
 const CARDINAL_16 = [
@@ -51,6 +52,12 @@ export class WindCard extends LitElement {
       show_cardinal: true,
       direction_from: true,
     };
+  }
+
+  // Size in a sections dashboard. The compass is square, so its height follows the
+  // width. Below 6 columns the speed no longer fits inside the hub.
+  public getGridOptions(): GridOptions {
+    return { columns: 12, rows: 'auto', min_columns: 6 };
   }
 
   public setConfig(config: WindCardConfig): void {
@@ -260,6 +267,8 @@ export class WindCard extends LitElement {
         width: 100%;
         max-width: 260px;
         aspect-ratio: 1 / 1;
+        /* Readout text scales with the compass (sizes match the old rem values at 260px) */
+        container-type: inline-size;
       }
       .compass {
         width: 100%;
@@ -324,21 +333,21 @@ export class WindCard extends LitElement {
         pointer-events: none;
       }
       .speed {
-        font-size: 2.2rem;
+        font-size: clamp(1rem, 13.5cqi, 2.2rem);
         font-weight: 700;
         line-height: 1;
         color: var(--primary-text-color);
       }
       .unit {
-        font-size: 0.8rem;
+        font-size: clamp(0.6rem, 5cqi, 0.8rem);
         color: var(--secondary-text-color);
         margin-top: 2px;
       }
       .cardinal-text {
-        font-size: 0.9rem;
+        font-size: clamp(0.65rem, 5.5cqi, 0.9rem);
         font-weight: 600;
         color: var(--primary-text-color);
-        margin-top: 6px;
+        margin-top: clamp(2px, 2.3cqi, 6px);
       }
 
       .secondary {

@@ -18,6 +18,18 @@ Install from Home Assistant's built-in [Marketplace](https://www.home-assistant.
 
 For manual installs, updating, rolling back, troubleshooting and removal, see the **[Installation and update guide](INSTALL.md)**.
 
+## Dashboard layout
+
+All cards work in sections dashboards (Home Assistant's default) and can be resized in the editor like built-in cards. Default sizes:
+
+| Card | Width (of 12 columns) | Height |
+|---|---|---|
+| Gauge | 6 (minimum 4) | 3 rows |
+| Wind | 12 (minimum 6) | fits the compass |
+| Flow | full width (minimum 6) | fits the diagram |
+
+To change a card's size in YAML, add `grid_options`, for example `grid_options: { columns: 4 }`.
+
 ## Usage
 
 ### Gauge Card

@@ -65,6 +65,7 @@ Only exposes `title` (text), `url` (text), and `height` (number, 100–1000px sl
   - `tank`/`junction` passthrough: pipe animation through a tank or junction depends on it leading somewhere active downstream, or being a dead-end (still counts as active if fed), not on any on/off state of the tank/junction itself.
 - Skips re-render if no watched entity state changed (perf).
 - **Click-through**: if `url` is set, `ha-card` gets `role="button"`, `tabindex="0"`, a pointer cursor, and responds to click/tap or `Enter` keypress by navigating — in-app (`navigate()`, no reload) for `/`-prefixed paths, otherwise `window.location.assign()`. If `url` is unset (the default), the card has none of this — no click handler, no `role`/`tabindex`, no pointer cursor; it's inert, identical to pre-#36 behavior.
+- **Sections dashboards** (`getGridOptions`): full section width by default, minimum 6 columns; rows are `auto`, so the height follows the diagram (and `height`).
 
 ## Validation (`setConfig()`)
 - ≥1 node; `edges` array present (can be empty).
