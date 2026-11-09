@@ -58,8 +58,8 @@ Use this only if you'd rather not connect a GitHub account to the customer's Hom
        echo "pauls-cards.js updated: $(wc -c < /config/www/pauls-cards.js) bytes"'
    ```
 
-4. Save. Go to **Developer tools → YAML**, click **Check configuration**, then **Restart**.
-5. Go to **Developer tools → Actions**, run **Shell Command: pauls_cards_update**, and check the response shows `returncode: 0`.
+4. Save. Go to **Settings → Tools → YAML**, click **Check configuration**, then **Restart**.
+5. Go to **Settings → Tools → Actions**, run **Shell Command: pauls_cards_update**, and check the response shows `returncode: 0`.
 6. If `/config/www` didn't exist before step 5, restart once more. Home Assistant only serves a `www` folder that existed when it started.
 7. Go to **Settings → Dashboards**, open the **⋮** menu, and choose **Resources**. Click **Add resource**:
    - **URL:** `/local/pauls-cards.js?v=0.10.0`, using the [latest release](https://github.com/keteracel/pauls-custom-cards/releases/latest) number
@@ -87,7 +87,7 @@ Marketplace checks this repository about every 2 days, so a new release can take
 
 ### Without Marketplace
 
-1. Run **Shell Command: pauls_cards_update** from **Developer tools → Actions** and check it shows `returncode: 0`.
+1. Run **Shell Command: pauls_cards_update** from **Settings → Tools → Actions** and check it shows `returncode: 0`.
 2. Go to **Settings → Dashboards → ⋮ → Resources**, open the `pauls-cards.js` entry, and change the `?v=` number to the new version, for example `/local/pauls-cards.js?v=0.10.0`.
 3. Reload the page.
 
