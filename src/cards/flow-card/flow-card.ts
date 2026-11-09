@@ -4,6 +4,7 @@ import { ifDefined } from 'lit/directives/if-defined.js';
 import { navigate } from 'custom-card-helpers';
 import type { HomeAssistant } from 'custom-card-helpers';
 import type { AnchorSide, FlowCardConfig, FlowEdge, NodeType, ResolvedNode } from './types.js';
+import type { GridOptions } from '../../grid-options.js';
 
 const VALID_NODE_TYPES = new Set<NodeType>(['heat_pump', 'pump', 'tank', 'zone', 'valve', 'junction']);
 const VALID_ANCHOR_SIDES = new Set<AnchorSide>(['N', 'S', 'E', 'W']);
@@ -63,6 +64,11 @@ export class FlowCard extends LitElement {
         { from: 'tank', to: 'zone', color: '#ff6600' },
       ],
     };
+  }
+
+  // Size in a sections dashboard: full width, with the height set by the diagram.
+  public getGridOptions(): GridOptions {
+    return { columns: 'full', rows: 'auto', min_columns: 6 };
   }
 
   public setConfig(config: FlowCardConfig): void {

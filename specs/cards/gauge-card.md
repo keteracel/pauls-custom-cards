@@ -40,6 +40,7 @@ Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, sh
 - Missing/non-numeric entity state → shows a help icon with "Entity not found" (this error card is never clickable).
 - Skips re-render if the watched entity's state hasn't changed (perf).
 - **Tap**: unless `tap_action.action === 'none'`, the `ha-card` gets `role="button"`, `tabindex="0"`, a pointer cursor, and a focus-visible outline; click and Enter/Space (Space's default scroll prevented) call `handleAction(this, hass, config, 'tap')` from `custom-card-helpers`, which dispatches the standard HA action (more-info fires `hass-more-info` for `entity`).
+- **Sections dashboards** (`getGridOptions`): 6 columns × 3 rows by default; minimum 4 columns × 3 rows. The card fills its cell (`height: 100%`), so the level colour covers the whole tile. Below 150px wide (a container query on `ha-card`), the padding, icon and text shrink so values like `15.60 °C` still fit at 4 columns.
 
 ## Validation (`setConfig()`)
 - `entity` required; `levels` must have ≥1 entry; every level's `min`/`max` must be finite numbers with `min < max`.

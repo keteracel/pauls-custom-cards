@@ -5,6 +5,7 @@ import { ifDefined } from 'lit/directives/if-defined.js';
 import { handleAction } from 'custom-card-helpers';
 import type { HomeAssistant } from 'custom-card-helpers';
 import type { GaugeCardConfig, GaugeLevelConfig } from './types.js';
+import type { GridOptions } from '../../grid-options.js';
 
 @customElement('paul-gauge-card')
 export class GaugeCard extends LitElement {
@@ -41,6 +42,12 @@ export class GaugeCard extends LitElement {
         { min: 30, max: 50, icon: 'mdi:thermometer-high',  color: 'var(--error-color, #f44336)',   label: 'High'   },
       ],
     };
+  }
+
+  // Size in a sections dashboard. 3 rows fits the icon, value and name; narrower
+  // than 4 columns and a value like "23.5 °C" no longer fits.
+  public getGridOptions(): GridOptions {
+    return { columns: 6, rows: 3, min_columns: 4, min_rows: 3 };
   }
 
   // Fix #7 + #6: validate per-level fields at config time; sort once and cache
@@ -252,10 +259,15 @@ export class GaugeCard extends LitElement {
     return css`
       :host {
         display: block;
+        height: 100%;
       }
+      /* Fill the cell when a sections dashboard gives the card a fixed height */
       ha-card {
         display: block;
+        height: 100%;
+        box-sizing: border-box;
         background-color: var(--card-background-color, #fff);
+        container-type: inline-size;
         transition: background-color 0.5s ease;
         overflow: hidden;
       }
@@ -271,6 +283,8 @@ export class GaugeCard extends LitElement {
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        height: 100%;
+        box-sizing: border-box;
         padding: 24px 16px;
         gap: 8px;
         color: white;
@@ -301,6 +315,14 @@ export class GaugeCard extends LitElement {
         opacity: 0.9;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+      }
+      /* Narrow cards, e.g. 4 columns in a sections dashboard */
+      @container (max-width: 150px) {
+        .gauge-container { padding: 16px 8px; }
+        .gauge-icon ha-icon { --mdc-icon-size: 36px; }
+        .gauge-value { font-size: 1.6rem; }
+        .unit { font-size: 0.9rem; margin-left: 2px; }
+        .gauge-name { font-size: 0.75rem; text-align: center; }
       }
       .error {
         padding: 16px;

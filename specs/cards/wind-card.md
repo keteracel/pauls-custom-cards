@@ -36,6 +36,7 @@ Entity selectors use `ha-form`'s `entity` selector (renders in custom card edito
 - **Secondary readouts**: only rendered for configured optional entities — Avg (speed), Avg dir, Gust — each `—` when the entity is missing/non-numeric.
 - **Colours** come from HA theme CSS vars, so the card adapts to light/dark themes.
 - Speeds are formatted with `toFixed(decimals)`; non-numeric speed shows `—`.
+- **Sections dashboards** (`getGridOptions`): full section width (12 columns) by default, minimum 6; rows are `auto`, because the compass is square and its height follows the width. The centre readout scales with the compass (`cqi` units on `.compass-wrap`), so it matches the old rem sizes at the 260px maximum and fits inside the hub when smaller.
 
 ## Validation (`setConfig()`)
 - `speed_entity` and `direction_entity` are required.
