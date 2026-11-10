@@ -202,10 +202,49 @@ await page.waitForTimeout(100);
 await page.screenshot({ path: join(OUT, 'theme-ecovolt-dark.png') });
 await page.selectOption('#theme-switch', 'default');
 
+console.log('\nLink card checks:');
+
+await page.waitForFunction(() => document.querySelector('#link-grid paul-link-card')?.shadowRoot?.querySelector('.title'));
+const links = await page.evaluate(() => [...document.querySelectorAll('#link-grid paul-link-card')].map((c) => {
+  const card = c.shadowRoot.querySelector('ha-card');
+  return {
+    title: c.shadowRoot.querySelector('.title')?.textContent?.trim(),
+    icon: c.shadowRoot.querySelector('.icon ha-icon')?.getAttribute('icon'),
+    role: card.getAttribute('role'),
+    arrow: !!c.shadowRoot.querySelector('.arrow'),
+  };
+}));
+assert(links[0].title === 'Living room' && links[0].icon === 'mdi:sofa', `title and icon render (got ${JSON.stringify(links[0])})`);
+assert(links[0].role === 'button' && links[0].arrow, 'navigate link is a button with an arrow');
+assert(!links[3].arrow, 'show_arrow: false hides the arrow');
+assert(links[4].role === null && !links[4].arrow, 'no tap_action → not clickable, no arrow');
+
+// Tapping navigates in-app: navigate() pushes history and fires location-changed,
+// which the testbed logs (then resets the URL so the page stays put).
+const navigateBy = (index, activate) => page.evaluate(([i, how]) => {
+  const log = document.getElementById('link-log');
+  log.textContent = '';
+  const card = document.querySelectorAll('#link-grid paul-link-card')[i].shadowRoot.querySelector('ha-card');
+  if (how === 'click') card.click();
+  else card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+  return log.textContent;
+}, [index, activate]);
+const tapped = await navigateBy(0, 'click');
+assert(tapped === 'Navigated to /lovelace/living-room', `tap navigates to navigation_path (got "${tapped}")`);
+const keyed = await navigateBy(1, 'enter');
+assert(keyed === 'Navigated to /dashboard-energy/0', `Enter key navigates (got "${keyed}")`);
+
+const linkError = await page.evaluate(() => {
+  try { document.createElement('paul-link-card').setConfig({ type: 'x' }); return null; } catch (e) { return e.message; }
+});
+assert(/must define a title/.test(linkError ?? ''), `missing title is rejected (got "${linkError}")`);
+
 // Screenshots
 await page.evaluate(() => document.querySelector('#wind-grid').scrollIntoView());
 await page.locator('#wind-grid').screenshot({ path: join(OUT, 'wind-static.png') });
 await page.locator('#wind-live').screenshot({ path: join(OUT, 'wind-interactive.png') });
+await page.evaluate(() => document.querySelector('#link-grid').scrollIntoView());
+await page.locator('#link-grid').screenshot({ path: join(OUT, 'link-cards.png') });
 console.log(`\nScreenshots written to ${OUT}/`);
 
 await browser.close();

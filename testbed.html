@@ -378,7 +378,7 @@
       appliedThemeKeys = Object.keys(vars);
       document.body.style.fontFamily = vars['--font-family'] ?? '';
       // Cards only re-render on hass/config changes; nudge them so gradient colors re-resolve.
-      document.querySelectorAll('paul-gauge-card, paul-flow-card, paul-wind-card')
+      document.querySelectorAll('paul-gauge-card, paul-flow-card, paul-wind-card, paul-link-card')
         .forEach((c) => c.requestUpdate?.());
     };
     document.getElementById('theme-switch')
@@ -1064,6 +1064,38 @@
     dirSlider.addEventListener('input', updateWind);
     speedSlider.addEventListener('input', updateWind);
     updateWind();
+  </script>
+  <hr class="divider">
+
+  <h1>Paul's Link Card</h1>
+  <p class="subtitle">Icon + title that navigates elsewhere. Taps are logged below instead of navigating.</p>
+  <section>
+    <h2>Examples</h2>
+    <div class="grid" id="link-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))"></div>
+    <p class="subtitle" id="link-log">Tap a card…</p>
+  </section>
+
+  <script type="module">
+    await customElements.whenDefined('paul-link-card');
+    const linkGrid = document.getElementById('link-grid');
+    const linkExamples = [
+      { title: 'Living room', icon: 'mdi:sofa', tap_action: { action: 'navigate', navigation_path: '/lovelace/living-room' } },
+      { title: 'Energy dashboard', icon: 'mdi:lightning-bolt', color: 'var(--warning-color, #ff9800)', tap_action: { action: 'navigate', navigation_path: '/dashboard-energy/0' } },
+      { title: 'A very long title that should be cut off with an ellipsis', icon: 'mdi:garage', tap_action: { action: 'navigate', navigation_path: '/lovelace/garage' } },
+      { title: 'No arrow', icon: 'mdi:bed', show_arrow: false, tap_action: { action: 'navigate', navigation_path: '/lovelace/bedroom' } },
+      { title: 'Not clickable', icon: 'mdi:information-outline' },
+    ];
+    for (const ex of linkExamples) {
+      const card = document.createElement('paul-link-card');
+      card.setConfig({ type: 'custom:paul-link-card', ...ex });
+      card.hass = { states: {} };
+      linkGrid.appendChild(card);
+    }
+    // navigate() pushes history and fires location-changed; log it so the testbed stays put.
+    window.addEventListener('location-changed', () => {
+      document.getElementById('link-log').textContent = `Navigated to ${location.pathname}`;
+      history.replaceState(null, '', '/testbed.html');
+    });
   </script>
 </body>
 </html>

@@ -12,6 +12,10 @@ A full-bleed background colour card that reflects the current state of a sensor.
 
 A compass card showing wind **direction** (a rotating needle) and **speed** (in the centre), with optional secondary readouts for gust/maximum speed, average speed, and average direction (drawn as a second, dimmed needle). Direction can be driven by a degrees sensor or a cardinal string (`N`, `NNE`, …).
 
+### Paul's Link Card (`paul-link-card`)
+
+A one-row card with an icon and a title that takes you somewhere when tapped — another dashboard, another view, or any other Home Assistant action.
+
 ## Installation
 
 Install from Home Assistant's built-in [Marketplace](https://www.home-assistant.io/integrations/marketplace/) (Home Assistant 2026.11 or later). Go to **Settings → Marketplace → Add from link**, enter `keteracel/pauls-custom-cards` (type **Dashboard**), install **Paul's Custom Cards**, and hard-reload your browser. Updates then appear under **Settings → Updates**.
@@ -27,6 +31,7 @@ All cards work in sections dashboards (Home Assistant's default) and can be resi
 | Gauge | 6 (minimum 4) | 3 rows |
 | Wind | 12 (minimum 6) | fits the compass |
 | Flow | full width (minimum 6) | fits the diagram |
+| Link | 6 (minimum 3) | 1 row |
 
 To change a card's size in YAML, add `grid_options`, for example `grid_options: { columns: 4 }`.
 
@@ -128,3 +133,28 @@ The card has a visual editor — no YAML editing needed for normal use.
 | `decimals` | number | `1` | Speed decimal places (0–10) |
 | `show_cardinal` | boolean | `true` | Show N/E/S/W labels on the compass |
 | `direction_from` | boolean | `true` | `true` = needle points where the wind comes **from** (meteorological); `false` = points downwind |
+
+### Link Card
+
+```yaml
+type: custom:paul-link-card
+title: Energy
+icon: mdi:lightning-bolt
+tap_action:
+  action: navigate
+  navigation_path: /dashboard-energy/0   # another dashboard, or /lovelace/kitchen for a view
+```
+
+The card has a visual editor — pick **Navigate** as the tap action and enter the path.
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `title` | string | **required** | Text shown next to the icon |
+| `icon` | string | `mdi:link-variant` | MDI icon, e.g. `mdi:sofa` |
+| `color` | string | theme primary colour | Icon colour. Theme colours work too, e.g. `var(--accent-color)` |
+| `show_arrow` | boolean | `true` | Show a chevron on the right of clickable cards |
+| `tap_action` | [action](https://www.home-assistant.io/dashboards/actions/#tap-action) | `{ action: none }` | What a tap does. Usually `navigate` with a `navigation_path`; `url`, `more-info`, `perform-action` etc. also work. Without one the card is a plain label |
+
+> **Tip:** To find a dashboard's path, open it and copy everything after your Home Assistant address, e.g. `/dashboard-energy/0` from `http://homeassistant.local:8123/dashboard-energy/0`.

@@ -1,6 +1,7 @@
 import './cards/gauge-card/gauge-card.js';
 import './cards/flow-card/flow-card.js';
 import './cards/wind-card/wind-card.js';
+import './cards/link-card/link-card.js';
 
 declare global {
   interface Window {
@@ -41,6 +42,16 @@ if (!window.customCards.some(c => c.type === 'paul-wind-card')) {
     type: 'paul-wind-card',
     name: "Paul's Wind Card",
     description: 'Compass card showing wind direction and speed, with optional gust and average readouts.',
+    preview: true,
+    documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
+  });
+}
+
+if (!window.customCards.some(c => c.type === 'paul-link-card')) {
+  window.customCards.push({
+    type: 'paul-link-card',
+    name: "Paul's Link Card",
+    description: 'Icon and title that link to another dashboard or view (or run any tap action).',
     preview: true,
     documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
   });
