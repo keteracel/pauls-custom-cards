@@ -16,6 +16,7 @@ const MAIN_SCHEMA = [
   { name: 'name', selector: { text: {} } },
   { name: 'decimals', selector: { number: { mode: 'box', min: 0, step: 1 } } },
   { name: 'invert', selector: { boolean: {} } },
+  { name: 'clamp_negative', selector: { boolean: {} } },
   {
     name: 'color_mode',
     selector: {
@@ -45,6 +46,7 @@ const MAIN_LABELS: Record<string, string> = {
   name:       'Name (override)',
   decimals:   'Decimal places',
   invert:     'Invert value (-1 → 1, 1 → -1)',
+  clamp_negative: 'Show negative values as 0',
   color_mode: 'Color mode',
   show_name:  'Show name',
   show_unit:  'Show unit',
@@ -89,7 +91,6 @@ export class GaugeCardEditor extends LitElement {
     const levels = this._config.levels;
     if (idx < 0 || idx >= levels.length) return;
     const merged = { ...levels[idx], ...(ev.detail.value as Partial<GaugeLevelConfig>) };
-    if (typeof merged.min === 'number' && typeof merged.max === 'number' && merged.min >= merged.max) return;
     const newLevels = [...levels];
     newLevels[idx] = merged;
     fireEvent(this, 'config-changed', { config: { ...this._config, levels: newLevels } });

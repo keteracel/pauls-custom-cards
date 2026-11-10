@@ -21,6 +21,8 @@ export interface GaugeCardConfig {
   decimals?: number;
   /** Flip the sign of the value (-1 → 1, 1 → -1) before display, level matching and colour. */
   invert?: boolean;
+  /** Show values below zero as 0 (after invert). Levels and colour use the 0. */
+  clamp_negative?: boolean;
   show_name?: boolean;
   show_unit?: boolean;
   color_mode?: ColorMode;
