@@ -72,6 +72,9 @@ export class GaugeCard extends LitElement {
     if (config.invert != null && typeof config.invert !== 'boolean') {
       throw new Error(`invert must be true or false (got ${config.invert}).`);
     }
+    if (config.clamp_negative != null && typeof config.clamp_negative !== 'boolean') {
+      throw new Error(`clamp_negative must be true or false (got ${config.clamp_negative}).`);
+    }
     if (config.tap_action != null &&
         (typeof config.tap_action !== 'object' || typeof config.tap_action.action !== 'string')) {
       throw new Error('tap_action must be an action object, e.g. { action: "more-info" }.');
@@ -182,7 +185,11 @@ export class GaugeCard extends LitElement {
     ];
 
     const tierIndex = tiers.findIndex(([threshold]) => abs >= threshold);
-    if (tierIndex === -1) return `${sign}${abs.toFixed(decimals)}`;
+    if (tierIndex === -1) {
+      const fixed = abs.toFixed(decimals);
+      // A tiny negative like -0.001 rounds to zero: show "0.00", not "-0.00"
+      return `${Number(fixed) === 0 ? '' : sign}${fixed}`;
+    }
 
     let [threshold, suffix] = tiers[tierIndex];
     let scaled = (abs / threshold).toFixed(decimals);
@@ -227,8 +234,9 @@ export class GaugeCard extends LitElement {
     const stateValue = Number(stateObj.state);
     const isNumeric = Number.isFinite(stateValue);
     // invert flips the sign before everything else, so levels match the shown value.
-    // `|| 0` turns -0 into 0.
-    const rawValue = this._config.invert ? -stateValue || 0 : stateValue;
+    // `|| 0` turns -0 into 0. clamp_negative then shows anything below zero as 0.
+    const signedValue = this._config.invert ? -stateValue || 0 : stateValue;
+    const rawValue = this._config.clamp_negative ? Math.max(0, signedValue) : signedValue;
 
     // Fix #6: compute level once and pass to color function — no double resolution
     const level = isNumeric ? this._getCurrentLevel(rawValue) : undefined;

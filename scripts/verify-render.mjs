@@ -158,6 +158,53 @@ assert(inv['0/true'].value === '0', `invert: 0 shows as 0, not -0 (got "${inv['0
 assert(inv['-1/false'].value === '-1', `no invert: -1 shows as -1 (got "${inv['-1/false'].value}")`);
 assert(/invert must be true or false/.test(invertResults.error ?? ''), `non-boolean invert is rejected (got "${invertResults.error}")`);
 
+console.log('\nGauge card negative-value checks:');
+
+// Levels can be negative or span zero; clamp_negative shows values below zero as 0.
+const neg = await page.evaluate(async () => {
+  const levels = [
+    { min: 0.5, max: 100, icon: 'mdi:d', color: '#ff0000' },
+    { min: -1000, max: -100, icon: 'mdi:a', color: '#0000ff' },
+    { min: -0.5, max: 0.5, icon: 'mdi:c', color: '#000000' },
+    { min: -100, max: -0.5, icon: 'mdi:b', color: '#00ffff' },
+  ];
+  const render = async (state, extra = {}) => {
+    const el = document.createElement('paul-gauge-card');
+    el.setConfig({ type: 'custom:paul-gauge-card', entity: 'sensor.neg', levels, ...extra });
+    el.hass = { states: { 'sensor.neg': { entity_id: 'sensor.neg', state, attributes: {} } } };
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const sr = el.shadowRoot;
+    const r = { value: sr.querySelector('.gauge-value').textContent.trim(), bg: sr.querySelector('ha-card').style.backgroundColor };
+    el.remove();
+    return r;
+  };
+  let error = null;
+  try {
+    document.createElement('paul-gauge-card').setConfig({ type: 'x', entity: 'sensor.neg', clamp_negative: 'yes', levels });
+  } catch (e) { error = e.message; }
+  return {
+    deep: await render('-550'),
+    mid: await render('-50.25'),
+    gradient: await render('-50', { color_mode: 'gradient' }),
+    tiny: await render('-0.001'),
+    big: await render('-1500.5'),
+    clamped: await render('-2', { clamp_negative: true }),
+    positive: await render('50', { clamp_negative: true }),
+    invertThenClamp: await render('7', { invert: true, clamp_negative: true }),
+    error,
+  };
+});
+assert(neg.deep.bg === 'rgb(0, 0, 255)' && neg.deep.value === '-550.00', `-550 matches the -1000…-100 level (got ${JSON.stringify(neg.deep)})`);
+assert(neg.mid.bg === 'rgb(0, 255, 255)', `-50.25 matches the -100…-0.5 level (got ${neg.mid.bg})`);
+assert(neg.gradient.bg === 'rgb(0, 127, 127)', `gradient works across negative levels (got ${neg.gradient.bg})`);
+assert(neg.tiny.value === '0.00', `-0.001 shows as 0.00, not -0.00 (got "${neg.tiny.value}")`);
+assert(neg.big.value === '-1.50k', `large negatives keep their sign with a suffix (got "${neg.big.value}")`);
+assert(neg.clamped.value === '0.00' && neg.clamped.bg === 'rgb(0, 0, 0)', `clamp_negative: -2 shows as 0 with the zero level's colour (got ${JSON.stringify(neg.clamped)})`);
+assert(neg.positive.value === '50.00', `clamp_negative leaves positives alone (got "${neg.positive.value}")`);
+assert(neg.invertThenClamp.value === '0.00', `invert applies before clamp_negative: 7 → -7 → 0 (got "${neg.invertThenClamp.value}")`);
+assert(/clamp_negative must be true or false/.test(neg.error ?? ''), `non-boolean clamp_negative is rejected (got "${neg.error}")`);
+
 console.log('\nTheme-variable color checks:');
 
 // Gradient mode mixes var(--…) colors using the current theme values.

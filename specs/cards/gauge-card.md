@@ -13,6 +13,7 @@ Displays a single numeric sensor value with a full-bleed background card whose c
 | `unit` | string | no | entity's `unit_of_measurement` | Override unit suffix |
 | `decimals` | number | no | `2` | Decimal places shown; always padded, e.g. 21.50 |
 | `invert` | boolean | no | `false` | Flip the value's sign (-1 → 1, 1 → -1). Applied before display, level matching and gradient colour, so `levels` are written for the inverted value. `-0` shows as `0`. |
+| `clamp_negative` | boolean | no | `false` | Show values below zero as `0`, after `invert`. Level matching and gradient colour use the clamped `0`. |
 | `show_name` | boolean | no | `true` | Show name below value |
 | `show_unit` | boolean | no | `true` | Show unit suffix |
 | `color_mode` | `'distinct' \| 'gradient'` | no | `'distinct'` | distinct = flat color per level; gradient = interpolate between consecutive level colors based on value position |
@@ -36,7 +37,7 @@ Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, sh
 - Value lookup: level where `value >= min && value < max`; if the value falls in a gap between levels, returns the level with the highest `max` below the value (avoids unintuitive jumps to the wrong level).
 - Color: `distinct` → level's static color. `gradient` → RGB-interpolate between current level's color and the next level's color, normalized by `(value - min) / (max - min)`. `var(--name, fallback)` colors are resolved against the card's computed style at render time, so gradients follow the active HA theme.
 - Stub config (`getStubConfig`) uses theme colors: `var(--info-color)`, `var(--success-color)`, `var(--error-color)`, each with its old hex as fallback.
-- Numeric values are formatted with metric suffix notation: `k`/`M`/`B`/`T` at 1e3/1e6/1e9/1e12, using the largest tier whose threshold is ≤ the absolute value. If rounding the scaled value to `decimals` places pushes it up to the next tier (e.g. 999999.999 → "1000.00k"), the value is promoted to the next larger tier and reformatted. Sign is preserved (e.g. "-45.60k"). Level matching and color computation always use the raw, unformatted value.
+- Numeric values are formatted with metric suffix notation: `k`/`M`/`B`/`T` at 1e3/1e6/1e9/1e12, using the largest tier whose threshold is ≤ the absolute value. If rounding the scaled value to `decimals` places pushes it up to the next tier (e.g. 999999.999 → "1000.00k"), the value is promoted to the next larger tier and reformatted. Sign is preserved (e.g. "-45.60k"), except that a negative value that rounds to zero shows without it (`-0.001` → "0.00"). Level matching and color computation always use the raw, unformatted value.
 - States are parsed with `Number()` and must be finite to be formatted — partially-numeric states (timestamps, "45 W") and `Infinity` display raw and get no level color, rather than a misleading scaled number.
 - Missing/non-numeric entity state → shows a help icon with "Entity not found" (this error card is never clickable).
 - Skips re-render if the watched entity's state hasn't changed (perf).
@@ -45,6 +46,8 @@ Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, sh
 
 ## Validation (`setConfig()`)
 - `entity` required; `levels` must have ≥1 entry; every level's `min`/`max` must be finite numbers with `min < max`.
+- `invert` and `clamp_negative`, when set, must be booleans.
+- Levels may be negative or span zero. The editor passes a level with `min >= max` straight through (no silent revert), so `setConfig` shows the error until the other bound is changed.
 - `decimals`, when set, must be an integer 0–100 (`toFixed`'s limit); `null`/`undefined` (e.g. a cleared editor field) falls back to the default of 2.
 - `tap_action`, when set, must be an object with a string `action`; unset falls back to `{ action: 'more-info' }`.
 - In gradient mode, a color that can't be parsed (after resolving `var(--…)`) falls back to the level's flat color with a console warning.
