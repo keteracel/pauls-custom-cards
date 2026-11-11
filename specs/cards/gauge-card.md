@@ -15,7 +15,8 @@ Displays a single numeric sensor value with a full-bleed background card whose c
 | `invert` | boolean | no | `false` | Flip the value's sign (-1 → 1, 1 → -1). Applied before display, level matching and gradient colour, so `levels` are written for the inverted value. `-0` shows as `0`. |
 | `clamp_negative` | boolean | no | `false` | Show values below zero as `0`, after `invert`. Level matching and gradient colour use the clamped `0`. |
 | `show_name` | boolean | no | `true` | Show name below value |
-| `show_unit` | boolean | no | `true` | Show unit suffix |
+| `show_unit` | boolean | no | `true` | Show the unit |
+| `unit_position` | `'after' \| 'before'` | no | `'after'` | Unit after the value (`21.50 °C`, with a small gap) or before it (`£2.35`). Before the value, a leading minus stays in front of the unit (`-£1.20`). Applies to non-numeric states too |
 | `color_mode` | `'distinct' \| 'gradient'` | no | `'distinct'` | distinct = flat color per level; gradient = interpolate between consecutive level colors based on value position |
 | `tap_action` | `ActionConfig` | no | `{ action: 'more-info' }` | HA-standard action config. Default opens the entity's more-info dialog (with history graph). `{ action: 'none' }` makes the card a passive, non-clickable display. Also supports `navigate`, `url`, etc. |
 | `levels` | `GaugeLevelConfig[]` | yes, ≥1 | — | See below |
@@ -30,7 +31,7 @@ Displays a single numeric sensor value with a full-bleed background card whose c
 | `label` | string | no | Not currently rendered anywhere |
 
 ## Editor (`gauge-card-editor.ts`)
-Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, show_name/show_unit toggles, a `tap_action` picker (HA `ui_action` selector, default more-info), plus a per-level editor (min/max/icon/color/label with add/remove). Nothing requires hand-editing YAML for normal use — this card's editor is comprehensive, unlike Flow Card's.
+Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, show_name/show_unit toggles, a unit_position dropdown, a `tap_action` picker (HA `ui_action` selector, default more-info), plus a per-level editor (min/max/icon/color/label with add/remove). Nothing requires hand-editing YAML for normal use — this card's editor is comprehensive, unlike Flow Card's.
 
 ## Rendering Behavior
 - Levels sorted ascending by `min` once at `setConfig()` and cached.
@@ -47,6 +48,7 @@ Exposes via `ha-form`: entity selector, name text input, color_mode dropdown, sh
 ## Validation (`setConfig()`)
 - `entity` required; `levels` must have ≥1 entry; every level's `min`/`max` must be finite numbers with `min < max`.
 - `invert` and `clamp_negative`, when set, must be booleans.
+- `unit_position`, when set, must be `'before'` or `'after'`.
 - Levels may be negative or span zero. The editor passes a level with `min >= max` straight through (no silent revert), so `setConfig` shows the error until the other bound is changed.
 - `decimals`, when set, must be an integer 0–100 (`toFixed`'s limit); `null`/`undefined` (e.g. a cleared editor field) falls back to the default of 2.
 - `tap_action`, when set, must be an object with a string `action`; unset falls back to `{ action: 'more-info' }`.

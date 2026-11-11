@@ -205,6 +205,39 @@ assert(neg.positive.value === '50.00', `clamp_negative leaves positives alone (g
 assert(neg.invertThenClamp.value === '0.00', `invert applies before clamp_negative: 7 → -7 → 0 (got "${neg.invertThenClamp.value}")`);
 assert(/clamp_negative must be true or false/.test(neg.error ?? ''), `non-boolean clamp_negative is rejected (got "${neg.error}")`);
 
+console.log('\nGauge card unit position checks:');
+
+const units = await page.evaluate(async () => {
+  const render = async (state, extra = {}) => {
+    const el = document.createElement('paul-gauge-card');
+    el.setConfig({ type: 'custom:paul-gauge-card', entity: 'sensor.cost', unit: '£',
+      levels: [{ min: -10, max: 10, icon: 'mdi:cash', color: '#000' }], ...extra });
+    el.hass = { states: { 'sensor.cost': { entity_id: 'sensor.cost', state, attributes: { unit_of_measurement: 'GBP' } } } };
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const v = el.shadowRoot.querySelector('.gauge-value');
+    const r = { text: v.textContent.replace(/\s+/g, ''), first: v.firstElementChild?.className ?? null };
+    el.remove();
+    return r;
+  };
+  let error = null;
+  try {
+    document.createElement('paul-gauge-card').setConfig({ type: 'x', entity: 'sensor.cost', unit_position: 'left', levels: [{ min: 0, max: 1, icon: 'mdi:a', color: '#000' }] });
+  } catch (e) { error = e.message; }
+  return {
+    after: await render('2.345'),
+    before: await render('2.345', { unit_position: 'before' }),
+    negative: await render('-1.2', { unit_position: 'before' }),
+    hidden: await render('2.345', { unit_position: 'before', show_unit: false }),
+    error,
+  };
+});
+assert(units.after.text === '2.35£', `default puts the unit after (got "${units.after.text}")`);
+assert(units.before.text === '£2.35' && units.before.first === 'unit unit--before', `unit_position: before gives "£2.35" (got ${JSON.stringify(units.before)})`);
+assert(units.negative.text === '-£1.20', `negative with unit before gives "-£1.20" (got "${units.negative.text}")`);
+assert(units.hidden.text === '2.35', `show_unit: false hides a leading unit too (got "${units.hidden.text}")`);
+assert(/unit_position must be "before" or "after"/.test(units.error ?? ''), `invalid unit_position is rejected (got "${units.error}")`);
+
 console.log('\nTheme-variable color checks:');
 
 // Gradient mode mixes var(--…) colors using the current theme values.

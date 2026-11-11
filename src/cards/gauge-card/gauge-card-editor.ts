@@ -30,6 +30,17 @@ const MAIN_SCHEMA = [
   },
   { name: 'show_name', selector: { boolean: {} } },
   { name: 'show_unit', selector: { boolean: {} } },
+  {
+    name: 'unit_position',
+    selector: {
+      select: {
+        options: [
+          { value: 'after',  label: 'After the value (21.50 °C)' },
+          { value: 'before', label: 'Before the value (£2.35)' },
+        ],
+      },
+    },
+  },
   { name: 'tap_action', selector: { ui_action: { default_action: 'more-info' } } },
 ];
 
@@ -50,6 +61,7 @@ const MAIN_LABELS: Record<string, string> = {
   color_mode: 'Color mode',
   show_name:  'Show name',
   show_unit:  'Show unit',
+  unit_position: 'Unit position',
   tap_action: 'Tap action',
 };
 
@@ -121,7 +133,7 @@ export class GaugeCardEditor extends LitElement {
 
         <ha-form
           .schema=${MAIN_SCHEMA}
-          .data=${{ color_mode: 'distinct', show_name: true, show_unit: true, decimals: 2, tap_action: { action: 'more-info' }, ...this._config }}
+          .data=${{ color_mode: 'distinct', show_name: true, show_unit: true, unit_position: 'after', decimals: 2, tap_action: { action: 'more-info' }, ...this._config }}
           .hass=${this.hass}
           .computeLabel=${computeMainLabel}
           @value-changed=${this._mainChanged}

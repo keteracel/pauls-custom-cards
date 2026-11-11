@@ -25,6 +25,8 @@ export interface GaugeCardConfig {
   clamp_negative?: boolean;
   show_name?: boolean;
   show_unit?: boolean;
+  /** Where the unit goes: 'after' the value (default, "21.50 °C") or 'before' it ("£2.35"). */
+  unit_position?: 'before' | 'after';
   color_mode?: ColorMode;
   /**
    * What happens on tap. Defaults to `{ action: 'more-info' }` — opens Home
