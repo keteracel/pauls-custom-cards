@@ -72,6 +72,9 @@ export class GaugeCard extends LitElement {
     if (config.invert != null && typeof config.invert !== 'boolean') {
       throw new Error(`invert must be true or false (got ${config.invert}).`);
     }
+    if (config.unit_position != null && config.unit_position !== 'before' && config.unit_position !== 'after') {
+      throw new Error(`unit_position must be "before" or "after" (got ${config.unit_position}).`);
+    }
     if (config.clamp_negative != null && typeof config.clamp_negative !== 'boolean') {
       throw new Error(`clamp_negative must be true or false (got ${config.clamp_negative}).`);
     }
@@ -204,6 +207,15 @@ export class GaugeCard extends LitElement {
     return `${sign}${scaled}${suffix}`;
   }
 
+  // Puts the unit after the value ("21.50 °C") or before it ("£2.35"). Before the
+  // value, a minus sign stays in front of the unit: "-£1.20", not "£-1.20".
+  private _renderValue(value: string, unit: string) {
+    if (!unit) return value;
+    if (this._config.unit_position !== 'before') return html`${value}<span class="unit">${unit}</span>`;
+    const sign = value.startsWith('-') ? '-' : '';
+    return html`${sign}<span class="unit unit--before">${unit}</span>${value.slice(sign.length)}`;
+  }
+
   private _onTap(): void {
     handleAction(this, this.hass, this._config, 'tap');
   }
@@ -261,7 +273,7 @@ export class GaugeCard extends LitElement {
             <ha-icon icon="${icon}"></ha-icon>
           </div>
           <div class="gauge-value">
-            ${isNumeric ? this._formatValue(rawValue) : stateObj.state}${this._config.show_unit && unit ? html`<span class="unit">${unit}</span>` : ''}
+            ${this._renderValue(isNumeric ? this._formatValue(rawValue) : stateObj.state, this._config.show_unit ? unit : '')}
           </div>
           ${this._config.show_name ? html`<div class="gauge-name">${friendlyName}</div>` : ''}
         </div>
@@ -324,6 +336,10 @@ export class GaugeCard extends LitElement {
         margin-left: 4px;
         opacity: 0.85;
       }
+      .unit--before {
+        margin-left: 0;
+        margin-right: 2px;
+      }
       .gauge-name {
         font-size: 0.9rem;
         opacity: 0.9;
@@ -336,6 +352,7 @@ export class GaugeCard extends LitElement {
         .gauge-icon ha-icon { --mdc-icon-size: 36px; }
         .gauge-value { font-size: 1.6rem; }
         .unit { font-size: 0.9rem; margin-left: 2px; }
+        .unit--before { margin-left: 0; margin-right: 1px; }
         .gauge-name { font-size: 0.75rem; text-align: center; }
       }
       .error {

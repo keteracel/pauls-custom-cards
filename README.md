@@ -76,6 +76,7 @@ levels:
 | `clamp_negative` | boolean | `false` | Show values below zero as `0`. Useful for sensors that dip slightly negative, e.g. solar power reading `-2 W` at night. Levels and colours use the `0`. Applied after `invert` |
 | `show_name` | boolean | `true` | Show the name below the value |
 | `show_unit` | boolean | `true` | Show the unit next to the value |
+| `unit_position` | `after` \| `before` | `after` | Put the unit after the value (`21.50 °C`) or before it (`£2.35`), e.g. for currencies. A negative value shows as `-£1.20` |
 | `tap_action` | [action](https://www.home-assistant.io/dashboards/actions/#tap-action) | `{ action: more-info }` | What a tap does. Defaults to opening the entity's more-info dialog (with its history graph). Set `{ action: none }` for a passive, non-clickable gauge. Also supports `navigate`, `url`, etc. |
 
 #### Level options
