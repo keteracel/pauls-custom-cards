@@ -35,12 +35,14 @@ export class PagerOverlay extends LitElement {
   @property({ attribute: false }) public previous?: string;
   @property({ attribute: false }) public next?: string;
   @property({ attribute: false }) public topOffset?: number;
+  /** Right edge of HA's docked sidebar, so the left arrow sits beside it, not over it. */
+  @property({ attribute: false }) public leftOffset = 0;
   @property({ attribute: false }) public onGo!: (path: string) => void;
 
   protected render() {
     const top = this.topOffset != null ? `${this.topOffset}px` : 'var(--header-height, 56px)';
     return html`
-      <style>:host { --pager-top: ${top}; }</style>
+      <style>:host { --pager-top: ${top}; --pager-left: ${this.leftOffset}px; }</style>
       ${this.previous ? html`
         <button class="arrow left" aria-label="Previous page" @click=${() => this.onGo(this.previous!)}>
           <ha-icon icon="mdi:chevron-left"></ha-icon>
@@ -71,7 +73,7 @@ export class PagerOverlay extends LitElement {
         -webkit-tap-highlight-color: transparent;
         transition: background-color 120ms, color 120ms;
       }
-      .left { left: 0; border-left: none; border-radius: 0 14px 14px 0; }
+      .left { left: var(--pager-left, 0px); border-left: none; border-radius: 0 14px 14px 0; }
       .right { right: 0; border-right: none; border-radius: 14px 0 0 14px; }
       .arrow:hover, .arrow:active {
         color: var(--primary-color, #03a9f4);
@@ -102,6 +104,7 @@ export class PagerCard extends LitElement {
   private _overlay?: PagerOverlay;
   private _ownPath?: string;
   private _touch?: { x: number; y: number; t: number };
+  private _sidebarObserver?: ResizeObserver;
 
   public static async getConfigElement(): Promise<HTMLElement> {
     try {
@@ -150,6 +153,7 @@ export class PagerCard extends LitElement {
     window.addEventListener('popstate', this._sync);
     window.addEventListener('touchstart', this._onTouchStart, { passive: true });
     window.addEventListener('touchend', this._onTouchEnd, { passive: true });
+    window.addEventListener('resize', this._sync);
     this._sync();
   }
 
@@ -159,6 +163,9 @@ export class PagerCard extends LitElement {
     window.removeEventListener('popstate', this._sync);
     window.removeEventListener('touchstart', this._onTouchStart);
     window.removeEventListener('touchend', this._onTouchEnd);
+    window.removeEventListener('resize', this._sync);
+    this._sidebarObserver?.disconnect();
+    this._sidebarObserver = undefined;
     this._overlay?.remove();
     this._overlay = undefined;
   }
@@ -191,7 +198,25 @@ export class PagerCard extends LitElement {
     this._overlay.previous = previous;
     this._overlay.next = next;
     this._overlay.topOffset = this._config.offset_top;
+    this._overlay.leftOffset = this._sidebarRight();
   };
+
+  /**
+   * Right edge of HA's sidebar when it's docked beside the content (full or collapsed to
+   * icons), else 0. A hidden or modal sidebar (off-canvas, or covering half the screen)
+   * doesn't count. Watches the sidebar so collapsing/expanding moves the arrow.
+   */
+  private _sidebarRight(): number {
+    const main = document.querySelector('home-assistant')?.shadowRoot?.querySelector('home-assistant-main');
+    const sidebar = main?.shadowRoot?.querySelector('ha-sidebar') as HTMLElement | null | undefined;
+    if (!sidebar) return 0;
+    if (!this._sidebarObserver) {
+      this._sidebarObserver = new ResizeObserver(() => this._sync());
+      this._sidebarObserver.observe(sidebar);
+    }
+    const r = sidebar.getBoundingClientRect();
+    return r.width > 0 && r.left >= 0 && r.right < window.innerWidth / 2 ? Math.round(r.right) : 0;
+  }
 
   private _onTouchStart = (ev: TouchEvent): void => {
     this._touch = undefined;
