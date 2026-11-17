@@ -385,6 +385,28 @@ const offPage = await page.evaluate(async () => {
 });
 assert(offPage, 'arrows hide when another view is on screen');
 
+const leftWithSidebar = await page.evaluate(async () => {
+  // Mimic HA's DOM: home-assistant > home-assistant-main > ha-sidebar, docked 56px wide.
+  const ha = document.createElement('home-assistant');
+  const main = document.createElement('home-assistant-main');
+  ha.attachShadow({ mode: 'open' }).appendChild(main);
+  const sidebar = document.createElement('ha-sidebar');
+  sidebar.style.cssText = 'position: fixed; left: 0; top: 0; bottom: 0; width: 56px; display: block';
+  main.attachShadow({ mode: 'open' }).appendChild(sidebar);
+  document.body.appendChild(ha);
+  window.dispatchEvent(new Event('resize'));
+  await new Promise((r) => setTimeout(r, 100));
+  const docked = document.querySelector('paul-pager-overlay').shadowRoot.querySelector('.left').getBoundingClientRect().left;
+  sidebar.style.left = '-56px'; // hidden off-canvas
+  window.dispatchEvent(new Event('resize'));
+  await new Promise((r) => setTimeout(r, 100));
+  const hidden = document.querySelector('paul-pager-overlay').shadowRoot.querySelector('.left').getBoundingClientRect().left;
+  ha.remove();
+  return { docked, hidden };
+});
+assert(leftWithSidebar.docked === 56 && leftWithSidebar.hidden === 0,
+  `left arrow sits beside a docked sidebar, at the edge when it's hidden (got ${JSON.stringify(leftWithSidebar)})`);
+
 await page.click('#pager-toggle');
 assert(await overlayArrows() === null, 'removing the card removes the arrows');
 
