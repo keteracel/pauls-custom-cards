@@ -1094,8 +1094,40 @@
     // navigate() pushes history and fires location-changed; log it so the testbed stays put.
     window.addEventListener('location-changed', () => {
       document.getElementById('link-log').textContent = `Navigated to ${location.pathname}`;
+      const pagerLog = document.getElementById('pager-log');
+      if (pagerLog) pagerLog.textContent = `Navigated to ${location.pathname}`;
       history.replaceState(null, '', '/testbed.html');
     });
+  </script>
+  <hr class="divider">
+
+  <h1>Paul's Pager Card</h1>
+  <p class="subtitle">Tall arrows on the screen edges step through a list of views; swiping does the same. Navigation is logged below instead of happening.</p>
+  <section>
+    <h2>Page 2 of 3</h2>
+    <p class="subtitle">pages: /pager-1, /testbed.html, /pager-3, so both arrows show.</p>
+    <button id="pager-toggle">Show page arrows</button>
+    <input id="pager-slider" type="range" style="width: 300px" aria-label="Swipes on sliders are ignored">
+    <div id="pager-host"></div>
+    <p class="subtitle" id="pager-log">Tap an arrow or swipe…</p>
+  </section>
+
+  <script type="module">
+    await customElements.whenDefined('paul-pager-card');
+    const host = document.getElementById('pager-host');
+    document.getElementById('pager-toggle').addEventListener('click', (ev) => {
+      if (host.firstChild) {
+        host.replaceChildren();
+        ev.target.textContent = 'Show page arrows';
+        return;
+      }
+      const card = document.createElement('paul-pager-card');
+      card.setConfig({ type: 'custom:paul-pager-card', pages: ['/pager-1', '/testbed.html', '/pager-3'], offset_top: 0 });
+      card.hass = { states: {} };
+      host.appendChild(card);
+      ev.target.textContent = 'Hide page arrows';
+    });
+    // The link card's location-changed listener above logs navigation here too.
   </script>
 </body>
 </html>

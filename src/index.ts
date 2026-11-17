@@ -2,6 +2,7 @@ import './cards/gauge-card/gauge-card.js';
 import './cards/flow-card/flow-card.js';
 import './cards/wind-card/wind-card.js';
 import './cards/link-card/link-card.js';
+import './cards/pager-card/pager-card.js';
 
 declare global {
   interface Window {
@@ -52,6 +53,16 @@ if (!window.customCards.some(c => c.type === 'paul-link-card')) {
     type: 'paul-link-card',
     name: "Paul's Link Card",
     description: 'Icon and title that link to another dashboard or view (or run any tap action).',
+    preview: true,
+    documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
+  });
+}
+
+if (!window.customCards.some(c => c.type === 'paul-pager-card')) {
+  window.customCards.push({
+    type: 'paul-pager-card',
+    name: "Paul's Pager Card",
+    description: 'Tall arrow buttons on the screen edges (and swipe) to step through a set of views.',
     preview: true,
     documentationURL: 'https://github.com/keteracel/pauls-custom-cards',
   });
