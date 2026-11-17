@@ -319,6 +319,80 @@ const linkError = await page.evaluate(() => {
 });
 assert(/must define a title/.test(linkError ?? ''), `missing title is rejected (got "${linkError}")`);
 
+
+console.log('\nPager card checks:');
+
+const overlayArrows = () => page.evaluate(() => {
+  const o = document.querySelector('paul-pager-overlay');
+  if (!o) return null;
+  return [...o.shadowRoot.querySelectorAll('.arrow')].map((b) => b.getAttribute('aria-label'));
+});
+await page.click('#pager-toggle');
+await page.waitForFunction(() => document.querySelector('paul-pager-overlay')?.shadowRoot?.querySelector('.arrow'));
+assert(JSON.stringify(await overlayArrows()) === JSON.stringify(['Previous page', 'Next page']), 'middle page shows both arrows');
+const arrowBox = await page.evaluate(() => {
+  const r = document.querySelector('paul-pager-overlay').shadowRoot.querySelector('.right').getBoundingClientRect();
+  return { right: r.right, width: r.width, height: r.height };
+});
+const vw = page.viewportSize().width;
+assert(Math.round(arrowBox.right) === vw && arrowBox.width <= 32 && arrowBox.height > 600,
+  `right arrow is a tall thin strip on the screen edge (got ${JSON.stringify(arrowBox)})`);
+await page.screenshot({ path: join(OUT, 'pager-arrows.png') });
+
+const pagerAction = (fn) => page.evaluate(async (fnSrc) => {
+  const log = document.getElementById('pager-log');
+  log.textContent = '';
+  await new Function(`return (${fnSrc})()`)();
+  return log.textContent;
+}, fn.toString());
+const clickedNext = await pagerAction(() => document.querySelector('paul-pager-overlay').shadowRoot.querySelector('.right').click());
+assert(clickedNext === 'Navigated to /pager-3', `right arrow goes to the next page (got "${clickedNext}")`);
+const clickedPrev = await pagerAction(() => document.querySelector('paul-pager-overlay').shadowRoot.querySelector('.left').click());
+assert(clickedPrev === 'Navigated to /pager-1', `left arrow goes to the previous page (got "${clickedPrev}")`);
+
+const swipe = (dx, targetSelector) => pagerAction(new Function(`
+  const target = document.querySelector('${targetSelector}');
+  const touch = (x) => new Touch({ identifier: 1, target, clientX: x, clientY: 400 });
+  target.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(600)], changedTouches: [touch(600)], bubbles: true, composed: true }));
+  target.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [touch(600 + ${dx})], bubbles: true, composed: true }));
+`));
+assert(await swipe(-150, 'h1') === 'Navigated to /pager-3', 'swipe left goes to the next page');
+assert(await swipe(150, 'h1') === 'Navigated to /pager-1', 'swipe right goes to the previous page');
+assert(await swipe(-150, '#pager-slider') === '', 'swipe that starts on a slider is ignored');
+assert(await swipe(-30, 'h1') === '', 'short swipe is ignored');
+
+const ends = await page.evaluate(async () => {
+  const card = document.querySelector('paul-pager-card');
+  const result = {};
+  for (const [name, pages] of Object.entries({ first: ['/testbed.html', '/b'], last: ['/a', '/testbed.html'] })) {
+    card.setConfig({ type: 'custom:paul-pager-card', pages, offset_top: 0 });
+    await card.updateComplete;
+    result[name] = [...document.querySelector('paul-pager-overlay').shadowRoot.querySelectorAll('.arrow')].map((b) => b.getAttribute('aria-label'));
+  }
+  return result;
+});
+assert(JSON.stringify(ends.first) === '["Next page"]', `first page hides the left arrow (got ${JSON.stringify(ends.first)})`);
+assert(JSON.stringify(ends.last) === '["Previous page"]', `last page hides the right arrow (got ${JSON.stringify(ends.last)})`);
+
+const offPage = await page.evaluate(async () => {
+  // popstate, not location-changed: the testbed's link logger resets the URL on that.
+  history.replaceState(null, '', '/somewhere-else');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  const gone = !document.querySelector('paul-pager-overlay');
+  history.replaceState(null, '', '/testbed.html');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  return gone;
+});
+assert(offPage, 'arrows hide when another view is on screen');
+
+await page.click('#pager-toggle');
+assert(await overlayArrows() === null, 'removing the card removes the arrows');
+
+const pagerError = await page.evaluate(() => {
+  try { document.createElement('paul-pager-card').setConfig({ type: 'x' }); return null; } catch (e) { return e.message; }
+});
+assert(/Set pages, or previous/.test(pagerError ?? ''), `config without pages/previous/next is rejected (got "${pagerError}")`);
+
 // Screenshots
 await page.evaluate(() => document.querySelector('#wind-grid').scrollIntoView());
 await page.locator('#wind-grid').screenshot({ path: join(OUT, 'wind-static.png') });

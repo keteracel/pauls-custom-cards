@@ -16,6 +16,10 @@ A compass card showing wind **direction** (a rotating needle) and **speed** (in 
 
 A one-row card with an icon and a title that takes you somewhere when tapped — another dashboard, another view, or any other Home Assistant action.
 
+### Paul's Pager Card (`paul-pager-card`)
+
+Tall, thin arrow buttons on the left and right edges of the screen that step through a set of views, like pages. Swiping left or right on a touchscreen does the same. Made for wall-mounted touchscreens.
+
 ## Installation
 
 Install from Home Assistant's built-in [Marketplace](https://www.home-assistant.io/integrations/marketplace/) (Home Assistant 2026.11 or later). Go to **Settings → Marketplace → Add from link**, enter `keteracel/pauls-custom-cards` (type **Dashboard**), install **Paul's Custom Cards**, and hard-reload your browser. Updates then appear under **Settings → Updates**.
@@ -32,6 +36,7 @@ All cards work in sections dashboards (Home Assistant's default) and can be resi
 | Wind | 12 (minimum 6) | fits the compass |
 | Flow | full width (minimum 6) | fits the diagram |
 | Link | 6 (minimum 3) | 1 row |
+| Pager | full width | takes no space; the arrows sit on the screen edges |
 
 To change a card's size in YAML, add `grid_options`, for example `grid_options: { columns: 4 }`.
 
@@ -160,3 +165,30 @@ The card has a visual editor — pick **Navigate** as the tap action and enter t
 | `tap_action` | [action](https://www.home-assistant.io/dashboards/actions/#tap-action) | `{ action: none }` | What a tap does. Usually `navigate` with a `navigation_path`; `url`, `more-info`, `perform-action` etc. also work. Without one the card is a plain label |
 
 > **Tip:** To find a dashboard's path, open it and copy everything after your Home Assistant address, e.g. `/dashboard-energy/0` from `http://homeassistant.local:8123/dashboard-energy/0`.
+
+### Pager Card
+
+Put the same card on every page, listing the pages in order. It works out where you are, and hides the left arrow on the first page and the right arrow on the last.
+
+```yaml
+type: custom:paul-pager-card
+pages:
+  - /dashboard-wall/weather-now
+  - /dashboard-wall/weather-trends
+  - /dashboard-wall/weather-rain
+  - /dashboard-wall/weather-sun
+```
+
+Make each page a [subview](https://www.home-assistant.io/dashboards/views/#subview) so the header shows a back arrow to the main view.
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `pages` | list of paths | — | The pages in order. Needed unless you set `previous` and/or `next` |
+| `previous` | path | from `pages` | Where the left arrow (and swiping right) goes. Overrides `pages` |
+| `next` | path | from `pages` | Where the right arrow (and swiping left) goes. Overrides `pages` |
+| `swipe` | boolean | `true` | Turn pages by swiping left or right. Swipes that start on sliders, charts or dialogs are ignored |
+| `offset_top` | number | below the header | Distance in pixels from the top of the screen to the arrows. Use `0` when the header is hidden (kiosk mode) |
+
+The card has a visual editor for `previous`, `next`, `swipe` and `offset_top`; use the code editor for `pages`.
